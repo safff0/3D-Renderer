@@ -1,0 +1,57 @@
+#include "object3d.h"
+#include "geometry.h"
+
+#include <vector>
+
+namespace engine {
+
+void Object3D::AddPolygon(const Polygon& poly) {
+    mesh_.push_back(poly);
+}
+
+void Object3D::AddFace(const std::vector<Vector3>& face) {
+    for (size_t i = 1; i + 1 < face.size(); ++i) {
+        AddPolygon(Polygon{face[0], face[i], face[i + 1]});
+    }
+}
+
+const std::vector<Polygon>& Object3D::GetMesh() const {
+    return mesh_;
+}
+
+Object3D Object3D::Cube(Type size) {
+    Object3D result;
+    for (auto& i : {-1, 1}) {
+        Type h = (size + i * size) / 2.0;
+        result.AddFace({{size / 2, h, size / 2},
+                        {-size / 2, h, size / 2},
+                        {-size / 2, h, -size / 2},
+                        {size / 2, h, -size / 2}});
+        for (auto& j : {-1, 1}) {
+            result.AddFace({{i * size / 2, 0, j * size / 2},
+                            {-i * size / 2, 0, j * size / 2},
+                            {-i * size / 2, size, j * size / 2},
+                            {i * size / 2, size, j * size / 2}});
+        }
+    }
+    return result;
+}
+
+Object3D Object3D::Sphere(Type radius, IndexType subdiv) {
+    Object3D result;
+    const Type pi = glm::pi<Type>();
+    for (Type phi = 0; phi < 2 * pi; phi += pi / subdiv) {
+        for (Type psi = -pi / 2; psi < pi / 2; psi += pi / subdiv) {
+            Type y1 = radius * glm::sin(psi);
+            Type x1 = radius * glm::cos(phi);
+            Type z1 = radius * glm::sin(phi);
+            Type y2 = radius * glm::sin(psi + pi / subdiv);
+            Type x2 = radius * glm::cos(phi + pi / subdiv);
+            Type z2 = radius * glm::sin(phi + pi / subdiv);
+            result.AddFace({{x1, y1, z1}, {x2, y1, z2}, {x2, y2, z2}, {x1, y2, z1}});
+        }
+    }
+    return result;
+}
+
+}  // namespace engine
