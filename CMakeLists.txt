@@ -1,11 +1,12 @@
-cmake_minimum_required(VERSION 2.4)
+cmake_minimum_required(VERSION 3.1)
 project(3d-renderer)
 
-find_package(glm CONFIG REQUIRED)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fsanitize=address,undefined -O2")
-set(SRC_LIST src/main.cpp)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -fsanitize=address,undefined -O2 -DDEBUG -g")
 
-add_executable(${PROJECT_NAME} ${SRC_LIST})
+add_subdirectory(src)
 
-target_link_libraries(${PROJECT_NAME} PRIVATE glm::glm)
+add_executable(run_example example.cpp)
+target_include_directories(run_example PUBLIC src)
+target_link_libraries(run_example PUBLIC 3d_renderer)
