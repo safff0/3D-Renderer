@@ -3,7 +3,7 @@ project(3d-renderer)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++20 -Wall -fsanitize=address,undefined -O2 -DDEBUG -g")
+set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(src)
 
