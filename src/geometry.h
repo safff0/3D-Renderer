@@ -37,8 +37,6 @@ public:
     std::array<MathType, kVerticiesCount>& GetZBuffer();
 
 private:
-    MathType GetZBuffer(MathType z, MathType near, MathType far) const;
-
     std::array<Vector3, kVerticiesCount> data_;
     std::array<MathType, kVerticiesCount> z_buffer_;
 };

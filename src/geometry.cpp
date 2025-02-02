@@ -8,6 +8,14 @@
 
 namespace engine {
 
+namespace details {
+
+static MathType GetZBuffer(MathType z, MathType near, MathType far) {
+    return (far + near) / (far - near) - 2.0f / z * (-2.0 * far * near) / (far - near);
+}
+
+}  // namespace details
+
 Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform) {
     return transform * to;
 }
@@ -28,10 +36,6 @@ Polygon::Polygon(std::initializer_list<Vector3> init) {
     }
 }
 
-MathType Polygon::GetZBuffer(MathType z, MathType near, MathType far) const {
-    return (far + near) / (far - near) - 2.0f / z * (-2.0 * far * near) / (far - near);
-}
-
 Polygon Polygon::ApplyProjection(const Matrix4& transform, MathType near, MathType far) const {
     Polygon result(*this);
     result.ApplyProjectionInplace(transform, near, far);
@@ -42,7 +46,7 @@ void Polygon::ApplyProjectionInplace(const Matrix4& transform, MathType near, Ma
     for (IndexType i = 0; i < kVerticiesCount; ++i) {
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
-        z_buffer_[i] = GetZBuffer(tmp.z, near, far);
+        z_buffer_[i] = details::GetZBuffer(tmp.z, near, far);
     }
 }
 
