@@ -33,12 +33,8 @@ MathType Polygon::GetZBuffer(MathType z, MathType near, MathType far) const {
 }
 
 Polygon Polygon::ApplyProjection(const Matrix4& transform, MathType near, MathType far) const {
-    Polygon result({Vector3{}, Vector3{}, Vector3{}});
-    for (IndexType i = 0; i < kVerticiesCount; ++i) {
-        Vector4 tmp = PointApplyTransform(data_[i], transform);
-        result.data_[i] = Vector3(tmp.x, tmp.y, tmp.z);
-        result.z_buffer_[i] = GetZBuffer(tmp.z, near, far);
-    }
+    Polygon result(*this);
+    result.ApplyProjectionInplace(transform, near, far);
     return result;
 }
 
