@@ -20,9 +20,12 @@ struct RendererOutput {
 
 class Renderer {
 public:
+    using SizeType = size_t;
+
     static const Renderer* GetSingleton();
 
-    RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, size_t width) const;
+    RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
+                          SizeType height) const;
 
 private:
     Renderer();

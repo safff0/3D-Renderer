@@ -18,25 +18,28 @@ namespace engine {
 namespace details {
 
 namespace {
-const float kAspect = 4.0f / 3.0f;  // TODO: make a parameter
 const std::string kColorScheme =
     "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,. ";
 }  // namespace
 
 class RendererImpl {
 public:
+    using MathType = MathType;
+    using SizeType = Renderer::SizeType;
+
     RendererImpl() = default;
 
-    RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, size_t width) const {
+    RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
+                          SizeType height) const {
         std::vector<Polygon> polygons;
         FindPolygons(scene.GetRoot(), polygons);
-        PerspectiveProjection(polygons, camera);
-        return BuildOutput(width, polygons);
+        PerspectiveProjection(polygons, camera, static_cast<MathType>(width) / height);
+        return BuildOutput(width, height, polygons);
     }
 
 private:
-    RendererOutput BuildOutput(size_t width, std::vector<Polygon>& polygons) const {
-        size_t height = width / kAspect;
+    RendererOutput BuildOutput(SizeType width, SizeType height,
+                               std::vector<Polygon>& polygons) const {
         RendererOutput result;
         result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
         result.z_buffer.assign(height, std::vector<MathType>(width, -1));
@@ -55,15 +58,15 @@ private:
     void DrawPolygon(RendererOutput& result, Polygon& p) const {
         auto& verticies = p.GetVerticies();
         auto& z_buf = p.GetZBuffer();
-        for (size_t i = 0; i < verticies.size(); ++i) {
+        for (SizeType i = 0; i < verticies.size(); ++i) {
             result.data[verticies[i].x][verticies[i].y] = GetShade(z_buf[i]);
         }
         // TODO: Draw faces
     }
 
-    void ToScreenSpace(Polygon& p, size_t height, size_t width) const {
+    void ToScreenSpace(Polygon& p, SizeType height, SizeType width) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
-        for (size_t i = 0; i < Polygon::kVerticiesCount; ++i) {
+        for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             MathType new_x = (1.0f + verticies[i].y) / 2.0f * height;
             MathType new_y = (1.0f - verticies[i].x) / 2.0f * width;
             verticies[i] = Vector3{new_x, new_y, verticies[i].z};
@@ -73,7 +76,7 @@ private:
     void Reorder(Polygon& p) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
         std::array<MathType, Polygon::kVerticiesCount>& z_buf = p.GetZBuffer();
-        for (size_t i = 0; i < Polygon::kVerticiesCount; ++i) {
+        for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             if (verticies[i].x < verticies[0].x) {
                 std::swap(verticies[i], verticies[0]);
                 std::swap(z_buf[i], z_buf[0]);
@@ -92,15 +95,16 @@ private:
                 poly.push_back(polygon);
             }
         }
-        for (size_t i = 0; i < node.GetChildCount(); ++i) {
+        for (SizeType i = 0; i < node.GetChildCount(); ++i) {
             FindPolygons(node.GetChild(i), poly);
         }
     }
 
-    void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera) const {
+    void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
+                               MathType aspect) const {
         Matrix4 view_matrix = glm::translate<MathType>(Matrix4(1.0), -1.0f * camera.GetPosition());
         Matrix4 projection_matrix = glm::perspective<MathType>(
-            glm::radians(camera->GetFOV()), kAspect, camera->GetNear(), camera->GetFar());
+            glm::radians(camera->GetFOV()), aspect, camera->GetNear(), camera->GetFar());
         ApplyTransform(poly, projection_matrix * view_matrix, camera->GetNear(), camera->GetFar());
     }
 
@@ -122,9 +126,9 @@ const Renderer* Renderer::GetSingleton() {
     return &kRenderer;
 }
 
-RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera,
-                                size_t width) const {
-    return impl_->Render(scene, camera, width);
+RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
+                                SizeType height) const {
+    return impl_->Render(scene, camera, width, height);
 }
 
 }  // namespace engine

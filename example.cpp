@@ -18,7 +18,7 @@ int main() {
     camera->SetNear(1);
 
     // Draw Object's verticies in screen space
-    auto result = Renderer::GetSingleton()->Render(my_scene, camera, 40);
+    auto result = Renderer::GetSingleton()->Render(my_scene, camera, 40, 20);
     for (size_t i = 0; i < result.data.size(); ++i) {
         for (size_t j = 0; j < result.data[i].size(); ++j) {
             std::cout << result.data[i][j];
