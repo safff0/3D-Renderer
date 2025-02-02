@@ -1,5 +1,6 @@
 #include "node.h"
 
+#include <algorithm>
 #include <cassert>
 
 namespace engine::details {
