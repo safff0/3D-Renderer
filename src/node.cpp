@@ -4,6 +4,27 @@
 
 namespace engine::details {
 
+Node::Node(const Node& other)
+    : data_{other.data_}, parent_{other.parent_}, position_{other.position_} {
+    // Copy subtree
+    for (const std::unique_ptr<Node>& subtree : other.children_) {
+        children_.push_back(std::make_unique<Node>(*subtree));
+    }
+}
+
+Node& Node::operator=(const Node& other) {
+    Node tmp(other);
+    Swap(tmp);
+    return *this;
+}
+
+void Node::Swap(Node& other) {
+    children_.swap(other.children_);
+    std::swap(parent_, other.parent_);
+    std::swap(data_, other.data_);
+    std::swap(position_, other.position_);
+}
+
 void Node::Unlink() noexcept {
     if (parent_ != nullptr) {
         Node* parent = GetParent();

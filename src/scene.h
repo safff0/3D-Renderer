@@ -9,11 +9,12 @@ public:
     using IndexType = details::Node::IndexType;
 
     Scene() = default;
+    Scene(const Scene& other);
+    Scene& operator=(const Scene& other);
+    Scene(Scene&& other) noexcept = default;
+    Scene& operator=(Scene&& other) noexcept = default;
 
-    Scene(const Scene& other) = delete;
-    Scene& operator=(const Scene& other) = delete;
-    Scene(Scene&& other) = delete;
-    Scene& operator=(Scene&& other) = delete;
+    void Swap(Scene& other);
 
     ConstReference<EmptyNode> GetRoot() const;
 

@@ -24,13 +24,18 @@ public:
     Node() = default;
 
     template <typename T>
+        requires(!std::is_same_v<std::decay_t<T>, Node>)
     Node(T&& data) : data_{data} {
     }
 
-    Node(const Node& other) = delete;
-    Node& operator=(const Node& other) = delete;
-    Node(Node&& other) noexcept = delete;
-    Node& operator=(Node&& other) noexcept = delete;
+    // Copies Node with its subtree
+    Node(const Node& other);
+    Node& operator=(const Node& other);
+    // Other Nodes' pointers break if Node is moved
+    Node(Node&& other) = delete;
+    Node& operator=(Node&& other) = delete;
+    // Swaps Nodes' subtrees
+    void Swap(Node& other);
 
     Node* GetParent();
     const Node* GetParent() const;
