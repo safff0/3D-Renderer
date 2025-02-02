@@ -59,7 +59,7 @@ Vector3 Node::GetPosition() const {
 }
 
 bool Node::HasParent(const Node& other_node) const {
-    Node* parent = parent_;
+    const Node* parent = this;
     while (parent != nullptr) {
         if (parent == &other_node) {
             return true;
