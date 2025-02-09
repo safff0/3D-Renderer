@@ -5,6 +5,15 @@
 
 namespace engine {
 
+namespace {
+
+Vector3 GetSpericalCoordinates(Object3D::Type radius, Object3D::Type phi, Object3D::Type psi) {
+    return Vector3{radius * glm::sin(psi), radius * glm::cos(psi) * glm::cos(phi),
+                   radius * glm::cos(psi) * glm::sin(phi)};
+}
+
+}  // namespace
+
 void Object3D::AddPolygon(const Polygon& poly) {
     mesh_.push_back(poly);
 }
@@ -42,13 +51,11 @@ Object3D Object3D::Sphere(Type radius, IndexType subdiv) {
     const Type pi = glm::pi<Type>();
     for (Type phi = 0; phi < 2 * pi; phi += pi / subdiv) {
         for (Type psi = -pi / 2; psi < pi / 2; psi += pi / subdiv) {
-            Type y1 = radius * glm::sin(psi);
-            Type x1 = radius * glm::cos(phi);
-            Type z1 = radius * glm::sin(phi);
-            Type y2 = radius * glm::sin(psi + pi / subdiv);
-            Type x2 = radius * glm::cos(phi + pi / subdiv);
-            Type z2 = radius * glm::sin(phi + pi / subdiv);
-            result.AddFace({{x1, y1, z1}, {x2, y1, z2}, {x2, y2, z2}, {x1, y2, z1}});
+            Vector3 p1 = GetSpericalCoordinates(radius, phi, psi);
+            Vector3 p2 = GetSpericalCoordinates(radius, phi + pi / subdiv, psi);
+            Vector3 p3 = GetSpericalCoordinates(radius, phi + pi / subdiv, psi + pi / subdiv);
+            Vector3 p4 = GetSpericalCoordinates(radius, phi, psi + pi / subdiv);
+            result.AddFace({p1, p2, p3, p4});
         }
     }
     return result;
