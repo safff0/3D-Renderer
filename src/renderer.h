@@ -19,22 +19,25 @@ struct RendererOutput {
 };
 
 class Renderer {
+    using RendererImpl = details::RendererImpl;
+
 public:
     using SizeType = size_t;
 
-    static const Renderer* GetSingleton();
+    Renderer();
+    ~Renderer();
+    Renderer(const Renderer& other);
+    Renderer& operator=(const Renderer& other);
+    Renderer(Renderer&& other) noexcept;
+    Renderer& operator=(Renderer&& other) noexcept;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
                           SizeType height) const;
 
-private:
-    Renderer();
-    Renderer(const Renderer& other) = delete;
-    Renderer& operator=(const Renderer& other) = delete;
-    Renderer(Renderer&& other) = delete;
-    Renderer& operator=(Renderer&& other) = delete;
+    void Swap(Renderer& other);
 
-    std::unique_ptr<details::RendererImpl> impl_;
+private:
+    std::unique_ptr<RendererImpl> impl_;
 };
 
 }  // namespace engine

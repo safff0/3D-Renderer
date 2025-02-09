@@ -27,8 +27,6 @@ public:
     using MathType = MathType;
     using SizeType = Renderer::SizeType;
 
-    RendererImpl() = default;
-
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
                           SizeType height) const {
         std::vector<Polygon> polygons;
@@ -118,12 +116,30 @@ private:
 
 }  // namespace details
 
-Renderer::Renderer() : impl_(std::make_unique<details::RendererImpl>()) {
+Renderer::Renderer() : impl_(std::make_unique<RendererImpl>()) {
 }
 
-const Renderer* Renderer::GetSingleton() {
-    static const Renderer kRenderer;
-    return &kRenderer;
+Renderer::~Renderer() = default;
+
+void Renderer::Swap(Renderer& other) {
+    impl_.swap(other.impl_);
+}
+
+Renderer::Renderer(const Renderer& other) : impl_{std::make_unique<RendererImpl>(*other.impl_)} {
+}
+
+Renderer& Renderer::operator=(const Renderer& other) {
+    Renderer tmp{other};
+    Swap(tmp);
+    return *this;
+}
+
+Renderer::Renderer(Renderer&& other) noexcept : impl_{other.impl_.release()} {
+}
+
+Renderer& Renderer::operator=(Renderer&& other) noexcept {
+    Swap(other);
+    return *this;
 }
 
 RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
