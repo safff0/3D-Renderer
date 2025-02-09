@@ -8,13 +8,13 @@
 
 namespace engine {
 
-namespace details {
+namespace {
 
-static MathType GetZBuffer(MathType z, MathType near, MathType far) {
+MathType GetZBuffer(MathType z, MathType near, MathType far) {
     return (far + near) / (far - near) - 2.0f / z * (-2.0 * far * near) / (far - near);
 }
 
-}  // namespace details
+}  // namespace
 
 Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform) {
     return transform * to;
@@ -46,7 +46,7 @@ void Polygon::ApplyProjectionInplace(const Matrix4& transform, MathType near, Ma
     for (IndexType i = 0; i < kVerticiesCount; ++i) {
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
-        z_buffer_[i] = details::GetZBuffer(tmp.z, near, far);
+        z_buffer_[i] = engine::GetZBuffer(tmp.z, near, far);
     }
 }
 
