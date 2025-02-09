@@ -25,7 +25,7 @@ public:
 
     template <typename T>
         requires(!std::is_same_v<std::decay_t<T>, Node>)
-    Node(T&& data) : data_{data} {
+    Node(T&& data) : data_{std::forward<T>(data)} {
     }
 
     // Copies Node with its subtree
@@ -47,6 +47,12 @@ public:
     void SetParent(Node& node) noexcept;
     void AddChild(Node& node) noexcept;
     void Unlink() noexcept;
+
+    template <typename T>
+    Node* NewChild(T&& data) noexcept {
+        children_.push_back(std::make_unique<Node>(std::forward<T>(data)));
+        return children_.back().get();
+    }
 
     void SetPosition(Vector3 new_pos);
     Vector3 GetPosition() const;

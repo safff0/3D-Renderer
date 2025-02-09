@@ -8,6 +8,10 @@ ConstReference<EmptyNode> Scene::GetRoot() const {
     return ConstReference<EmptyNode>{root_.get()};
 }
 
+Reference<EmptyNode> Scene::GetRoot() {
+    return Reference<EmptyNode>{root_.get()};
+}
+
 Scene::Scene(const Scene& other) : root_{std::make_unique<details::Node>(*other.root_)} {
 }
 

@@ -29,7 +29,7 @@ class NodeController : private NodeTypes<IsConst> {
 public:
     using typename NodeTypes<IsConst>::NodeType;
 
-    NodeController(NodeType* node) : node_{node} {
+    explicit NodeController(NodeType* node) : node_{node} {
         assert(node != nullptr && "Reference: Tried to refer to nullptr");
     }
 
@@ -54,7 +54,7 @@ public:
 
     ReferenceImpl() = delete;
 
-    ReferenceImpl(NodeType* node) : Base(node) {
+    explicit ReferenceImpl(NodeType* node) : Base(node) {
     }
 
     template <typename T, bool OtherConst>
@@ -86,6 +86,12 @@ public:
         requires(!IsConst)
     void AddChild(ReferenceImpl<T, false> ref) {
         node_->AddChild(*ref.node_);
+    }
+
+    template <typename T>
+        requires(!IsConst)
+    ReferenceImpl<T, IsConst> NewChild(T&& data) {
+        return ReferenceImpl<T, IsConst>{node_->template NewChild<T>(std::forward<T>(data))};
     }
 
     template <typename = std::enable_if<!IsConst>>

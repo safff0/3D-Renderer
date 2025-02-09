@@ -18,13 +18,7 @@ public:
     void Swap(Scene& other);
 
     ConstReference<EmptyNode> GetRoot() const;
-
-    template <typename T, typename... Args>
-    Reference<T> NewNode(Args&&... args) noexcept {
-        Node* new_node = new Node{T{std::forward<Args>(args)...}};
-        new_node->SetParent(*root_);
-        return Reference<T>{new_node};
-    }
+    Reference<EmptyNode> GetRoot();
 
 private:
     std::unique_ptr<Node> root_ = std::make_unique<Node>();
