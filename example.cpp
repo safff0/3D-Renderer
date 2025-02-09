@@ -11,12 +11,9 @@ using namespace engine;
 int main() {
     Scene my_scene;
     Renderer my_renderer;
-    Reference<Camera> camera = my_scene.NewNode<Camera>();
+    Reference<Camera> camera = my_scene.NewNode<Camera>(20.0f, 1.0f, 30.0f);
     my_scene.NewNode<Object3D>(Object3D::Cube(2));
     camera.SetPosition({2, 2, -12});
-    camera->SetFOV(30);
-    camera->SetFar(20);
-    camera->SetNear(1);
 
     // Draw Object's verticies in screen space
     auto result = my_renderer.Render(my_scene, camera, 40, 20);

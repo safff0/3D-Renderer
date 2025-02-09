@@ -6,6 +6,7 @@ namespace engine {
 
 class Scene {
 public:
+    using Node = details::Node;
     using IndexType = details::Node::IndexType;
 
     Scene() = default;
@@ -20,13 +21,13 @@ public:
 
     template <typename T, typename... Args>
     Reference<T> NewNode(Args&&... args) noexcept {
-        details::Node* new_node = new details::Node{T{std::forward<Args>(args)...}};
+        Node* new_node = new Node{T{std::forward<Args>(args)...}};
         new_node->SetParent(*root_);
         return Reference<T>{new_node};
     }
 
 private:
-    std::unique_ptr<details::Node> root_ = std::make_unique<details::Node>();
+    std::unique_ptr<Node> root_ = std::make_unique<Node>();
 };
 
 }  // namespace engine

@@ -15,14 +15,14 @@ class Scene;
 
 struct RendererOutput {
     std::vector<std::vector<char>> data;
-    std::vector<std::vector<MathType>> z_buffer;
+    std::vector<std::vector<Real>> z_buffer;
 };
 
 class Renderer {
     using RendererImpl = details::RendererImpl;
 
 public:
-    using SizeType = size_t;
+    using SizeType = Index;
 
     Renderer();
     ~Renderer();

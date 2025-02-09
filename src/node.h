@@ -19,7 +19,7 @@ class Node {
     using NodeDataType = std::variant<EmptyNode, Camera, Object3D>;
 
 public:
-    using IndexType = size_t;
+    using IndexType = Index;
 
     Node() = default;
 

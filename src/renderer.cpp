@@ -24,14 +24,14 @@ const std::string kColorScheme =
 
 class RendererImpl {
 public:
-    using MathType = MathType;
+    using Real = Real;
     using SizeType = Renderer::SizeType;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
                           SizeType height) const {
         std::vector<Polygon> polygons;
         FindPolygons(scene.GetRoot(), polygons);
-        PerspectiveProjection(polygons, camera, static_cast<MathType>(width) / height);
+        PerspectiveProjection(polygons, camera, static_cast<Real>(width) / height);
         return BuildOutput(width, height, polygons);
     }
 
@@ -40,7 +40,7 @@ private:
                                std::vector<Polygon>& polygons) const {
         RendererOutput result;
         result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
-        result.z_buffer.assign(height, std::vector<MathType>(width, -1));
+        result.z_buffer.assign(height, std::vector<Real>(width, -1));
         for (Polygon& poly : polygons) {
             ToScreenSpace(poly, height, width);
             Reorder(poly);
@@ -49,7 +49,7 @@ private:
         return result;
     }
 
-    char GetShade(MathType z) const {
+    char GetShade(Real z) const {
         return kColorScheme[(kColorScheme.size() - 1) * z];
     }
 
@@ -65,15 +65,15 @@ private:
     void ToScreenSpace(Polygon& p, SizeType height, SizeType width) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
-            MathType new_x = (1.0f + verticies[i].y) / 2.0f * height;
-            MathType new_y = (1.0f - verticies[i].x) / 2.0f * width;
+            Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
+            Real new_y = (1.0f - verticies[i].x) / 2.0f * width;
             verticies[i] = Vector3{new_x, new_y, verticies[i].z};
         }
     }
 
     void Reorder(Polygon& p) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
-        std::array<MathType, Polygon::kVerticiesCount>& z_buf = p.GetZBuffer();
+        std::array<Real, Polygon::kVerticiesCount>& z_buf = p.GetZBuffer();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             if (verticies[i].x < verticies[0].x) {
                 std::swap(verticies[i], verticies[0]);
@@ -99,15 +99,15 @@ private:
     }
 
     void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
-                               MathType aspect) const {
-        Matrix4 view_matrix = glm::translate<MathType>(Matrix4(1.0), -1.0f * camera.GetPosition());
-        Matrix4 projection_matrix = glm::perspective<MathType>(
-            glm::radians(camera->GetFOV()), aspect, camera->GetNear(), camera->GetFar());
+                               Real aspect) const {
+        Matrix4 view_matrix = glm::translate<Real>(Matrix4(1.0), -1.0f * camera.GetPosition());
+        Matrix4 projection_matrix = glm::perspective<Real>(glm::radians(camera->GetFOV()), aspect,
+                                                           camera->GetNear(), camera->GetFar());
         ApplyTransform(poly, projection_matrix * view_matrix, camera->GetNear(), camera->GetFar());
     }
 
-    void ApplyTransform(std::vector<Polygon>& poly, const Matrix4& transform, MathType near,
-                        MathType far) const {
+    void ApplyTransform(std::vector<Polygon>& poly, const Matrix4& transform, Real near,
+                        Real far) const {
         for (Polygon& polygon : poly) {
             polygon.ApplyProjectionInplace(transform, near, far);
         }

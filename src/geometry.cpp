@@ -10,7 +10,7 @@ namespace engine {
 
 namespace {
 
-MathType GetZBuffer(MathType z, MathType near, MathType far) {
+Real GetZBuffer(Real z, Real near, Real far) {
     return (far + near) / (far - near) - 2.0f / z * (-2.0 * far * near) / (far - near);
 }
 
@@ -36,13 +36,13 @@ Polygon::Polygon(std::initializer_list<Vector3> init) {
     }
 }
 
-Polygon Polygon::ApplyProjection(const Matrix4& transform, MathType near, MathType far) const {
+Polygon Polygon::ApplyProjection(const Matrix4& transform, Real near, Real far) const {
     Polygon result(*this);
     result.ApplyProjectionInplace(transform, near, far);
     return result;
 }
 
-void Polygon::ApplyProjectionInplace(const Matrix4& transform, MathType near, MathType far) {
+void Polygon::ApplyProjectionInplace(const Matrix4& transform, Real near, Real far) {
     for (IndexType i = 0; i < kVerticiesCount; ++i) {
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
@@ -54,7 +54,7 @@ const std::array<Vector3, Polygon::kVerticiesCount>& Polygon::GetVerticies() con
     return data_;
 }
 
-const std::array<MathType, Polygon::kVerticiesCount>& Polygon::GetZBuffer() const {
+const std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() const {
     return z_buffer_;
 }
 
@@ -62,7 +62,7 @@ std::array<Vector3, Polygon::kVerticiesCount>& Polygon::GetVerticies() {
     return data_;
 }
 
-std::array<MathType, Polygon::kVerticiesCount>& Polygon::GetZBuffer() {
+std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() {
     return z_buffer_;
 }
 

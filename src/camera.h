@@ -5,8 +5,10 @@ namespace engine {
 
 class Camera {
 public:
-    using Type = MathType;
+    using Type = Real;
 
+    Camera() = default;
+    Camera(Type far, Type near, Type fov);
     void SetFar(Type value);
     void SetNear(Type value);
     void SetFOV(Type value);

@@ -6,6 +6,9 @@ namespace engine {
 
 namespace {}  // namespace
 
+Camera::Camera(Type far, Type near, Type fov) : far_{far}, near_{near}, fov_{fov} {
+}
+
 void Camera::SetFar(Type value) {
     far_ = value;
     assert(far_ > near_ && "Camera: Camera far is less than near");

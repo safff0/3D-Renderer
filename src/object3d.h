@@ -5,8 +5,8 @@ namespace engine {
 
 class Object3D {
 public:
-    using Type = MathType;
-    using IndexType = size_t;
+    using Type = Real;
+    using IndexType = Index;
 
     const std::vector<Polygon>& GetMesh() const;
 

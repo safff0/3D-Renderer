@@ -19,7 +19,7 @@ void Object3D::AddPolygon(const Polygon& poly) {
 }
 
 void Object3D::AddFace(const std::vector<Vector3>& face) {
-    for (size_t i = 1; i + 1 < face.size(); ++i) {
+    for (IndexType i = 1; i + 1 < face.size(); ++i) {
         AddPolygon(Polygon{face[0], face[i], face[i + 1]});
     }
 }
