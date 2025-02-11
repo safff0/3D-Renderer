@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "alias.h"
 #include "camera.h"
 #include "geometry.h"
 #include "node.h"
@@ -27,37 +28,43 @@ public:
     using Real = Real;
     using SizeType = Renderer::SizeType;
 
-    RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
-                          SizeType height) const {
+    RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
+                          Height height) const {
         std::vector<Polygon> polygons;
         FindPolygons(scene.GetRoot(), polygons);
         PerspectiveProjection(polygons, camera, GetAspectRatio(width, height));
+        Normalize(polygons, width, height);
         return BuildOutput(width, height, polygons);
     }
 
 private:
-    Real GetAspectRatio(SizeType width, SizeType height) const {
+    Real GetAspectRatio(Width width, Height height) const {
         return static_cast<Real>(width) / height;
     }
 
-    RendererOutput BuildOutput(SizeType width, SizeType height,
-                               std::vector<Polygon>& polygons) const {
+    RendererOutput BuildOutput(Width width, Height height,
+                               const std::vector<Polygon>& polygons) const {
         RendererOutput result;
         result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
         result.z_buffer.assign(height, std::vector<Real>(width, -1));
-        for (Polygon& poly : polygons) {
-            ToScreenSpace(poly, height, width);
-            Reorder(poly);
+        for (const Polygon& poly : polygons) {
             DrawPolygon(result, poly);
         }
         return result;
+    }
+
+    void Normalize(std::vector<Polygon>& polygons, Width width, Height height) const {
+        for (Polygon& poly : polygons) {
+            ToScreenSpace(poly, width, height);
+            Reorder(poly);
+        }
     }
 
     char GetShade(Real z) const {
         return kColorScheme[(kColorScheme.size() - 1) * z];
     }
 
-    void DrawPolygon(RendererOutput& result, Polygon& p) const {
+    void DrawPolygon(RendererOutput& result, const Polygon& p) const {
         auto& verticies = p.GetVerticies();
         auto& z_buf = p.GetZBuffer();
         for (SizeType i = 0; i < verticies.size(); ++i) {
@@ -66,7 +73,7 @@ private:
         // TODO: Draw faces
     }
 
-    void ToScreenSpace(Polygon& p, SizeType height, SizeType width) const {
+    void ToScreenSpace(Polygon& p, Width width, Height height) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
@@ -121,8 +128,8 @@ private:
 }  // namespace details
 
 void Print(const RendererOutput& output) {
-    for (size_t i = 0; i < output.data.size(); ++i) {
-        for (size_t j = 0; j < output.data[i].size(); ++j) {
+    for (Index i = 0; i < output.data.size(); ++i) {
+        for (Index j = 0; j < output.data[i].size(); ++j) {
             std::cout << output.data[i][j];
         }
         std::cout << std::endl;
@@ -155,8 +162,8 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
     return *this;
 }
 
-RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, SizeType width,
-                                SizeType height) const {
+RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, Width width,
+                                Height height) const {
     return impl_->Render(scene, camera, width, height);
 }
 
