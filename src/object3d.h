@@ -15,13 +15,13 @@ public:
                            IndexType subdivide = kDefaultSphereSubdiv);
 
 private:
+    static constexpr Type kDefaultObjectSize = 1;
+    static constexpr Type kDefaultSphereSubdiv = 10;
+
     void AddPolygon(const Polygon& poly);
     void AddFace(const std::vector<Vector3>& face);
 
     std::vector<Polygon> mesh_ = {};
-
-    static constexpr Type kDefaultObjectSize = 1;
-    static constexpr Type kDefaultSphereSubdiv = 10;
 };
 
 }  // namespace engine

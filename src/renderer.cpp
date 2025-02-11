@@ -22,6 +22,15 @@ const std::string kColorScheme =
     "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,. ";
 }  // namespace
 
+void Print(const RendererOutput& output) {
+    for (size_t i = 0; i < output.data.size(); ++i) {
+        for (size_t j = 0; j < output.data[i].size(); ++j) {
+            std::cout << output.data[i][j];
+        }
+        std::cout << std::endl;
+    }
+}
+
 class RendererImpl {
 public:
     using Real = Real;
@@ -31,11 +40,15 @@ public:
                           SizeType height) const {
         std::vector<Polygon> polygons;
         FindPolygons(scene.GetRoot(), polygons);
-        PerspectiveProjection(polygons, camera, static_cast<Real>(width) / height);
+        PerspectiveProjection(polygons, camera, GetAspectRatio(width, height));
         return BuildOutput(width, height, polygons);
     }
 
 private:
+    Real GetAspectRatio(SizeType width, SizeType height) const {
+        return static_cast<Real>(width) / height;
+    }
+
     RendererOutput BuildOutput(SizeType width, SizeType height,
                                std::vector<Polygon>& polygons) const {
         RendererOutput result;
@@ -88,7 +101,7 @@ private:
 
     void FindPolygons(ConstReference<EmptyNode> node, std::vector<Polygon>& poly) const {
         if (Is<Object3D>(node)) {
-            auto mesh = static_cast<ConstReference<Object3D>>(node)->GetMesh();
+            auto mesh = As<Object3D>(node)->GetMesh();
             for (const Polygon& polygon : mesh) {
                 poly.push_back(polygon);
             }

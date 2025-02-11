@@ -17,11 +17,6 @@ int main() {
 
     // Draw Object's verticies in screen space
     auto result = my_renderer.Render(my_scene, camera, 40, 20);
-    for (size_t i = 0; i < result.data.size(); ++i) {
-        for (size_t j = 0; j < result.data[i].size(); ++j) {
-            std::cout << result.data[i][j];
-        }
-        std::cout << std::endl;
-    }
+    Print(result);
     return 0;
 }

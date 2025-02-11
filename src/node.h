@@ -73,6 +73,7 @@ public:
     }
 
 private:
+    static constexpr Vector3 kDefaultPosition = {0, 0, 0};
     // Invariants
     bool HasParent(const Node& other_node) const;
 
@@ -82,8 +83,6 @@ private:
 
     // TODO: implement Transforms logic
     Vector3 position_ = Node::kDefaultPosition;
-
-    static constexpr Vector3 kDefaultPosition = {0, 0, 0};
 };
 
 }  // namespace engine::details

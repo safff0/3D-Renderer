@@ -10,7 +10,7 @@ namespace engine {
 
 namespace {
 
-Real GetZBuffer(Real z, Real near, Real far) {
+Real GetZBufferCoordinate(Real z, Real near, Real far) {
     return (far + near) / (far - near) - 2.0f / z * (-2.0 * far * near) / (far - near);
 }
 
@@ -46,7 +46,7 @@ void Polygon::ApplyProjectionInplace(const Matrix4& transform, Real near, Real f
     for (IndexType i = 0; i < kVerticiesCount; ++i) {
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
-        z_buffer_[i] = engine::GetZBuffer(tmp.z, near, far);
+        z_buffer_[i] = GetZBufferCoordinate(tmp.z, near, far);
     }
 }
 

@@ -113,6 +113,11 @@ public:
     friend bool Is(ReferenceImpl<EmptyNode, IsConst> ref) {
         return Is<T>(*ref.node_);
     }
+
+    template <typename T>
+    friend ReferenceImpl<T, IsConst> As(ReferenceImpl<EmptyNode, IsConst> ref) {
+        return static_cast<ReferenceImpl<T, IsConst>>(ref);
+    }
 };
 
 template <NoQualifiers T, bool IsConst>

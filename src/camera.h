@@ -18,13 +18,13 @@ public:
     Type GetFOV() const;
 
 private:
-    Type far_ = kDefaultFar;
-    Type near_ = kDefaultNear;
-    Type fov_ = kDefaultFOV;  // degrees
-
     static constexpr Camera::Type kDefaultFar = 100.0f;
     static constexpr Camera::Type kDefaultNear = 5.0f;
     static constexpr Camera::Type kDefaultFOV = 50.0f;  // degrees
+
+    Type far_ = kDefaultFar;
+    Type near_ = kDefaultNear;
+    Type fov_ = kDefaultFOV;  // degrees
 };
 
 }  // namespace engine

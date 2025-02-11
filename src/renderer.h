@@ -18,6 +18,8 @@ struct RendererOutput {
     std::vector<std::vector<Real>> z_buffer;
 };
 
+void Print(const RendererOutput& output);
+
 class Renderer {
     using RendererImpl = details::RendererImpl;
 
