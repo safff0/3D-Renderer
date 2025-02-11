@@ -22,15 +22,6 @@ const std::string kColorScheme =
     "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,. ";
 }  // namespace
 
-void Print(const RendererOutput& output) {
-    for (size_t i = 0; i < output.data.size(); ++i) {
-        for (size_t j = 0; j < output.data[i].size(); ++j) {
-            std::cout << output.data[i][j];
-        }
-        std::cout << std::endl;
-    }
-}
-
 class RendererImpl {
 public:
     using Real = Real;
@@ -128,6 +119,15 @@ private:
 };
 
 }  // namespace details
+
+void Print(const RendererOutput& output) {
+    for (size_t i = 0; i < output.data.size(); ++i) {
+        for (size_t j = 0; j < output.data[i].size(); ++j) {
+            std::cout << output.data[i][j];
+        }
+        std::cout << std::endl;
+    }
+}
 
 Renderer::Renderer() : impl_(std::make_unique<RendererImpl>()) {
 }
