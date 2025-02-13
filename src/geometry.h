@@ -13,6 +13,23 @@ namespace engine {
 Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform);
 Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform);
 
+class Line2 {
+public:
+    using Type = Real;
+
+    Line2() = delete;
+    Line2(Vector2 from, Vector2 to);
+
+    Type GetX(Type y) const;
+    Type GetY(Type x) const;
+
+private:
+    // ax + by + c = 0
+    Type a_;
+    Type b_;
+    Type c_;
+};
+
 class Polygon {
 public:
     using IndexType = Index;

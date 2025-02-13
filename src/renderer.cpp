@@ -70,6 +70,29 @@ private:
         for (SizeType i = 0; i < verticies.size(); ++i) {
             result.data[verticies[i].x][verticies[i].y] = GetShade(z_buf[i]);
         }
+        Line2 l1{verticies[0], verticies[2]};
+        Line2 l2{verticies[1], verticies[2]};
+        Line2 l3{verticies[1], verticies[2]};
+        for (SizeType x = verticies[0].x; x < verticies[1].x; ++x) {
+            SizeType y1 = l1.GetY(x);
+            SizeType y2 = l2.GetY(x);
+            for (SizeType y = std::min(y1, y2); y <= std::max(y1, y2); ++y) {
+                if (z_buf[0] < result.z_buffer[x][y]) {
+                    result.data[x][y] = GetShade(z_buf[0]);
+                    result.z_buffer[x][y] = z_buf[0];
+                }
+            }
+        }
+        for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
+            SizeType y1 = l1.GetY(x);
+            SizeType y2 = l3.GetY(x);
+            for (SizeType y = std::min(y1, y2); y <= std::max(y1, y2); ++y) {
+                if (z_buf[0] < result.z_buffer[x][y]) {
+                    result.data[x][y] = GetShade(z_buf[0]);
+                    result.z_buffer[x][y] = z_buf[0];
+                }
+            }
+        }
         // TODO: Draw faces
     }
 
@@ -91,7 +114,7 @@ private:
                 std::swap(z_buf[i], z_buf[0]);
             }
         }
-        if (verticies[1].y > verticies[2].y) {
+        if (verticies[1].x > verticies[2].x) {
             std::swap(verticies[1], verticies[2]);
             std::swap(z_buf[1], z_buf[2]);
         }
