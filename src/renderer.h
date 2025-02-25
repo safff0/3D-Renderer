@@ -8,16 +8,18 @@
 
 namespace engine {
 
+struct RendererOutput {
+    Index width;
+    Index height;
+    std::vector<std::vector<char>> data;
+    std::vector<std::vector<Real>> z_buffer;
+};
+
 namespace details {
 class RendererImpl;
 }
 
 class Scene;
-
-struct RendererOutput {
-    std::vector<std::vector<char>> data;
-    std::vector<std::vector<Real>> z_buffer;
-};
 
 void Print(const RendererOutput& output);
 

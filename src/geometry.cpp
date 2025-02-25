@@ -25,17 +25,21 @@ Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform) {
 }
 
 Line2::Line2(Vector2 from, Vector2 to)
-    : a_{to.y - from.y}, b_{from.x - to.x}, c_{from.x * to.y - from.y * to.x} {
+    : a_{to.y - from.y}, b_{from.x - to.x}, c_{to.x * from.y - to.y * from.x} {
 }
 
 Line2::Type Line2::GetX(Type y) const {
-    assert(a_ != 0 && "Geometry: Line2 zero division");
+    assert(std::abs(a_) < kEps && "Geometry: Line2 zero division");
     return -1.0 * (c_ + b_ * y) / a_;
 }
 
 Line2::Type Line2::GetY(Type x) const {
-    assert(b_ != 0 && "Geometry: Line2 zero division");
+    assert(std::abs(b_) < kEps && "Geometry: Line2 zero division");
     return -1.0 * (c_ + a_ * x) / b_;
+}
+
+Line2::Type Line2::EquationValue(Vector2 point) const {
+    return a_ * point.x + b_ * point.y + c_;
 }
 
 Polygon::Polygon(const std::array<Vector3, kVerticiesCount>& init) : data_(init) {

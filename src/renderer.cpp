@@ -21,6 +21,16 @@ namespace details {
 namespace {
 const std::string kColorScheme =
     "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,. ";
+
+RendererOutput InitOutput(Index width, Index height) {
+    RendererOutput result;
+    result.width = width;
+    result.height = height;
+    result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
+    result.z_buffer.assign(height, std::vector<Real>(width, kInfinity));
+    return result;
+}
+
 }  // namespace
 
 class RendererImpl {
@@ -44,9 +54,7 @@ private:
 
     RendererOutput BuildOutput(Width width, Height height,
                                const std::vector<Polygon>& polygons) const {
-        RendererOutput result;
-        result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
-        result.z_buffer.assign(height, std::vector<Real>(width, -1));
+        RendererOutput result = InitOutput(width, height);
         for (const Polygon& poly : polygons) {
             DrawPolygon(result, poly);
         }
@@ -65,35 +73,43 @@ private:
     }
 
     void DrawPolygon(RendererOutput& result, const Polygon& p) const {
-        auto& verticies = p.GetVerticies();
-        auto& z_buf = p.GetZBuffer();
-        for (SizeType i = 0; i < verticies.size(); ++i) {
-            result.data[verticies[i].x][verticies[i].y] = GetShade(z_buf[i]);
-        }
+        const auto& verticies = p.GetVerticies();
+        const auto& z_buf = p.GetZBuffer();
         Line2 l1{verticies[0], verticies[2]};
-        Line2 l2{verticies[1], verticies[2]};
+        Line2 l2{verticies[0], verticies[1]};
         Line2 l3{verticies[1], verticies[2]};
-        for (SizeType x = verticies[0].x; x < verticies[1].x; ++x) {
-            SizeType y1 = l1.GetY(x);
-            SizeType y2 = l2.GetY(x);
-            for (SizeType y = std::min(y1, y2); y <= std::max(y1, y2); ++y) {
+        SizeType y1 = 0;
+        SizeType y2 = 0;
+        for (SizeType x = std::ceil(verticies[0].x); x < verticies[1].x; ++x) {
+            while (l1.EquationValue(Vector2{x, y1}) > 0) {
+                ++y1;
+            }
+            while (l2.EquationValue(Vector2{x, y2}) > 0) {
+                ++y2;
+            }
+            for (SizeType y = std::min(y1, y2) - 1; y + 1 < std::max(y1, y2); ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
                     result.data[x][y] = GetShade(z_buf[0]);
                     result.z_buffer[x][y] = z_buf[0];
                 }
             }
         }
-        for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
-            SizeType y1 = l1.GetY(x);
-            SizeType y2 = l3.GetY(x);
-            for (SizeType y = std::min(y1, y2); y <= std::max(y1, y2); ++y) {
+        y1 = 0;
+        y2 = 0;
+        for (SizeType x = std::round(verticies[1].x); x < verticies[2].x; ++x) {
+            while (l1.EquationValue(Vector2{x, y1}) > 0) {
+                ++y1;
+            }
+            while (l3.EquationValue(Vector2{x, y2}) > 0) {
+                ++y2;
+            }
+            for (SizeType y = std::min(y1, y2) - 1; y < std::max(y1, y2); ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
                     result.data[x][y] = GetShade(z_buf[0]);
                     result.z_buffer[x][y] = z_buf[0];
                 }
             }
         }
-        // TODO: Draw faces
     }
 
     void ToScreenSpace(Polygon& p, Width width, Height height) const {
@@ -101,7 +117,7 @@ private:
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
             Real new_y = (1.0f - verticies[i].x) / 2.0f * width;
-            verticies[i] = Vector3{new_x, new_y, verticies[i].z};
+            verticies[i] = Vector3{std::round(new_x), std::round(new_y), verticies[i].z};
         }
     }
 

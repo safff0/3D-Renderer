@@ -23,6 +23,8 @@ public:
     Type GetX(Type y) const;
     Type GetY(Type x) const;
 
+    Type EquationValue(Vector2 point) const;
+
 private:
     // ax + by + c = 0
     Type a_;

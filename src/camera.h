@@ -1,4 +1,5 @@
 #pragma once
+#include "alias.h"
 #include "geometry.h"
 
 namespace engine {
@@ -6,9 +7,12 @@ namespace engine {
 class Camera {
 public:
     using Type = Real;
+    using Far = Alias<Type, struct far_tag>;
+    using Near = Alias<Type, struct near_tag>;
+    using FOV = Alias<Type, struct fov_tag>;
 
     Camera() = default;
-    Camera(Type far, Type near, Type fov);
+    Camera(Far far, Near near, FOV fov);
     void SetFar(Type value);
     void SetNear(Type value);
     void SetFOV(Type value);
