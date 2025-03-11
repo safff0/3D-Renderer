@@ -29,12 +29,12 @@ Line2::Line2(Vector2 from, Vector2 to)
 }
 
 Line2::Type Line2::GetX(Type y) const {
-    assert(std::abs(a_) < kEps && "Geometry: Line2 zero division");
+    assert(std::abs(a_) > kEps && "Geometry: Line2 zero division");
     return -1.0 * (c_ + b_ * y) / a_;
 }
 
 Line2::Type Line2::GetY(Type x) const {
-    assert(std::abs(b_) < kEps && "Geometry: Line2 zero division");
+    assert(std::abs(b_) > kEps && "Geometry: Line2 zero division");
     return -1.0 * (c_ + a_ * x) / b_;
 }
 
@@ -65,6 +65,18 @@ void Polygon::ApplyProjectionInplace(const Matrix4& transform, Real near, Real f
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
         z_buffer_[i] = GetZBufferCoordinate(tmp.z, near, far);
+    }
+}
+
+Polygon Polygon::ApplyTransform(const Matrix4& transform) const {
+    Polygon result(*this);
+    result.ApplyTransformInplace(transform);
+    return result;
+}
+
+void Polygon::ApplyTransformInplace(const Matrix4& transform) {
+    for (IndexType i = 0; i < kVerticiesCount; ++i) {
+        data_[i] = PointApplyTransform(data_[i], transform);
     }
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "alias.h"
 #include "node.h"
 
 namespace engine {
@@ -107,6 +108,25 @@ public:
 
     Vector3 GetPosition() {
         return node_->GetPosition();
+    }
+
+    const Matrix4& GetTransform() {
+        return node_->GetTransform();
+    }
+
+    template <typename = std::enable_if<!IsConst>>
+    void SetRotationX(Real angle) {
+        node_->SetRotationX(angle);
+    }
+
+    template <typename = std::enable_if<!IsConst>>
+    void SetRotationY(Real angle) {
+        node_->SetRotationY(angle);
+    }
+
+    template <typename = std::enable_if<!IsConst>>
+    void SetRotationZ(Real angle) {
+        node_->SetRotationZ(angle);
     }
 
     template <typename T>

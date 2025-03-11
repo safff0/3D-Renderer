@@ -44,6 +44,9 @@ public:
     Polygon ApplyProjection(const Matrix4& proj, Real near, Real far) const;
     void ApplyProjectionInplace(const Matrix4& proj, Real near, Real far);
 
+    Polygon ApplyTransform(const Matrix4& transform) const;
+    void ApplyTransformInplace(const Matrix4& transform);
+
     const std::array<Vector3, kVerticiesCount>& GetVerticies() const;
     const std::array<Real, kVerticiesCount>& GetZBuffer() const;
     std::array<Vector3, kVerticiesCount>& GetVerticies();

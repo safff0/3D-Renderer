@@ -1,4 +1,5 @@
 #pragma once
+#include "alias.h"
 #include "camera.h"
 #include "geometry.h"
 #include "object3d.h"
@@ -54,8 +55,13 @@ public:
         return children_.back().get();
     }
 
+    const Matrix4& GetTransform() const;
     void SetPosition(Vector3 new_pos);
     Vector3 GetPosition() const;
+
+    void SetRotationX(Real angle);
+    void SetRotationY(Real angle);
+    void SetRotationZ(Real angle);
 
     template <typename T>
     friend bool Is(const Node& node) {
@@ -73,7 +79,7 @@ public:
     }
 
 private:
-    static constexpr Vector3 kDefaultPosition = {0, 0, 0};
+    static constexpr Matrix4 kDefaultTransform = Matrix4(1.0f);
     // Invariants
     bool HasParent(const Node& other_node) const;
 
@@ -81,8 +87,7 @@ private:
     Node* parent_ = nullptr;
     std::vector<std::unique_ptr<Node>> children_ = {};
 
-    // TODO: implement Transforms logic
-    Vector3 position_ = Node::kDefaultPosition;
+    Matrix4 transform_ = kDefaultTransform;
 };
 
 }  // namespace engine::details

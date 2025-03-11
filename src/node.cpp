@@ -2,11 +2,12 @@
 
 #include <algorithm>
 #include <cassert>
+#include "alias.h"
 
 namespace engine::details {
 
 Node::Node(const Node& other)
-    : data_{other.data_}, parent_{other.parent_}, position_{other.position_} {
+    : data_{other.data_}, parent_{other.parent_}, transform_{other.transform_} {
     // Copy subtree
     for (const std::unique_ptr<Node>& subtree : other.children_) {
         children_.push_back(std::make_unique<Node>(*subtree));
@@ -23,7 +24,7 @@ void Node::Swap(Node& other) {
     children_.swap(other.children_);
     std::swap(parent_, other.parent_);
     std::swap(data_, other.data_);
-    std::swap(position_, other.position_);
+    std::swap(transform_, other.transform_);
 }
 
 Node* Node::GetParent() {
@@ -72,12 +73,39 @@ void Node::Unlink() noexcept {
     }
 }
 
+const Matrix4& Node::GetTransform() const {
+    return transform_;
+}
+
 void Node::SetPosition(Vector3 new_pos) {
-    position_ = new_pos;
+    transform_ = glm::translate<Real>(transform_, new_pos);
+}
+
+void Node::SetRotationX(Real angle) {
+    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(1.0f, 0.0f, 0.0f));
+}
+
+void Node::SetRotationY(Real angle) {
+    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0f, 1.0f, 0.0f));
+}
+
+void Node::SetRotationZ(Real angle) {
+    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0f, 0.0f, 1.0f));
 }
 
 Vector3 Node::GetPosition() const {
-    return position_;
+    const Node* root = this;
+    std::vector<const Node*> path;
+    while (root) {
+        path.push_back(root);
+        root = root->parent_;
+    }
+    std::reverse(path.begin(), path.end());
+    Matrix4 global_transform = kDefaultTransform;
+    for (auto& node : path) {
+        global_transform *= node->transform_;
+    }
+    return global_transform[3];
 }
 
 bool Node::HasParent(const Node& other_node) const {

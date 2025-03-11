@@ -13,10 +13,11 @@ using engine::Scene;
 
 void Application::Run() {
     // Usage Example
-    Reference<EmptyNode> root = scene_.GetRoot();
-    Reference<Camera> camera = root.NewChild<Camera>(Camera{20.0f, 1.0f, 30.0f});
-    root.NewChild<Object3D>(Object3D::Cube(2));
-    camera.SetPosition({2, 2, -12});
+    auto root = scene_.GetRoot();
+    Reference<Camera> camera =
+        root.NewChild<Camera>(Camera{Camera::Far{20.0f}, Camera::Near{1.0f}, Camera::FOV{30.0f}});
+    root.NewChild<Object3D>(Object3D::Sphere(1));
+    camera.SetPosition({2, 1, -12});
 
     // Draw Object's verticies in screen space
     auto result = renderer_.Render(scene_, camera, engine::Width{40}, engine::Height{20});

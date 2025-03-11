@@ -69,7 +69,7 @@ private:
     }
 
     char GetShade(Real z) const {
-        return kColorScheme[(kColorScheme.size() - 1) * z];
+        return kColorScheme[(kColorScheme.size() - 1) * (z + 1) / 2];
     }
 
     void DrawPolygon(RendererOutput& result, const Polygon& p) const {
@@ -78,35 +78,37 @@ private:
         Line2 l1{verticies[0], verticies[2]};
         Line2 l2{verticies[0], verticies[1]};
         Line2 l3{verticies[1], verticies[2]};
-        SizeType y1 = 0;
-        SizeType y2 = 0;
-        for (SizeType x = std::ceil(verticies[0].x); x < verticies[1].x; ++x) {
-            while (l1.EquationValue(Vector2{x, y1}) > 0) {
-                ++y1;
+        for (SizeType x = verticies[0].x; x < verticies[1].x; ++x) {
+            SizeType y1 = l1.GetY(x);
+            SizeType y2 = l2.GetY(x);
+            if (y1 > y2) {
+                std::swap(y1, y2);
             }
-            while (l2.EquationValue(Vector2{x, y2}) > 0) {
-                ++y2;
-            }
-            for (SizeType y = std::min(y1, y2) - 1; y + 1 < std::max(y1, y2); ++y) {
+            for (SizeType y = y1 - 1; y < y2 + 1; ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
                     result.data[x][y] = GetShade(z_buf[0]);
                     result.z_buffer[x][y] = z_buf[0];
                 }
             }
         }
-        y1 = 0;
-        y2 = 0;
-        for (SizeType x = std::round(verticies[1].x); x < verticies[2].x; ++x) {
-            while (l1.EquationValue(Vector2{x, y1}) > 0) {
-                ++y1;
+        for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
+            SizeType y1 = l1.GetY(x);
+            SizeType y2 = l3.GetY(x);
+            if (y1 > y2) {
+                std::swap(y1, y2);
             }
-            while (l3.EquationValue(Vector2{x, y2}) > 0) {
-                ++y2;
-            }
-            for (SizeType y = std::min(y1, y2) - 1; y < std::max(y1, y2); ++y) {
+            for (SizeType y = y1 - 1; y < y2 + 1; ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
                     result.data[x][y] = GetShade(z_buf[0]);
                     result.z_buffer[x][y] = z_buf[0];
+                }
+            }
+        }
+        if (verticies[1].x == verticies[2].x) {
+            for (SizeType y = verticies[1].y - 1; y <= verticies[2].y; ++y) {
+                if (z_buf[0] < result.z_buffer[verticies[1].x][y]) {
+                    result.data[verticies[1].x][y] = GetShade(z_buf[0]);
+                    result.z_buffer[verticies[1].x][y] = z_buf[0];
                 }
             }
         }
@@ -136,11 +138,13 @@ private:
         }
     }
 
-    void FindPolygons(ConstReference<EmptyNode> node, std::vector<Polygon>& poly) const {
+    void FindPolygons(ConstReference<EmptyNode> node, std::vector<Polygon>& poly,
+                      Matrix4 transform = Matrix4(1.0f)) const {
+        transform = node.GetTransform() * transform;
         if (Is<Object3D>(node)) {
             auto mesh = As<Object3D>(node)->GetMesh();
             for (const Polygon& polygon : mesh) {
-                poly.push_back(polygon);
+                poly.push_back(polygon.ApplyTransform(transform));
             }
         }
         for (SizeType i = 0; i < node.GetChildCount(); ++i) {
