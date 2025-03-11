@@ -141,10 +141,6 @@ Renderer::Renderer() : impl_(std::make_unique<RendererImpl>()) {
 
 Renderer::~Renderer() = default;
 
-void Renderer::Swap(Renderer& other) {
-    impl_.swap(other.impl_);
-}
-
 Renderer::Renderer(const Renderer& other) : impl_{std::make_unique<RendererImpl>(*other.impl_)} {
 }
 
@@ -165,6 +161,10 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
 RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, Width width,
                                 Height height) const {
     return impl_->Render(scene, camera, width, height);
+}
+
+void Renderer::Swap(Renderer& other) {
+    impl_.swap(other.impl_);
 }
 
 }  // namespace engine

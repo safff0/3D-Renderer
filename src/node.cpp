@@ -26,28 +26,6 @@ void Node::Swap(Node& other) {
     std::swap(position_, other.position_);
 }
 
-void Node::Unlink() noexcept {
-    if (parent_ != nullptr) {
-        Node* parent = GetParent();
-        auto it = std::find_if(parent->children_.begin(), parent->children_.end(),
-                               [this](std::unique_ptr<Node>& ptr) { return ptr.get() == this; });
-        assert(it != parent->children_.end() && "Node: Parent does not have info about child");
-        it->release();
-        parent->children_.erase(it);
-    }
-}
-
-void Node::SetParent(Node& node) noexcept {
-    assert(!node.HasParent(*this) && "Node: Tried to link parent to its child");
-    Unlink();
-    parent_ = &node;
-    node.children_.emplace_back(this);
-}
-
-void Node::AddChild(Node& node) noexcept {
-    node.SetParent(*this);
-}
-
 Node* Node::GetParent() {
     assert(parent_ != nullptr && "Node: Tried to get nonexistent parent");
     return parent_;
@@ -70,6 +48,28 @@ Node* Node::GetChild(IndexType id) {
 const Node* Node::GetChild(IndexType id) const {
     assert(id < children_.size() && "Node: Child index out of range");
     return children_[id].get();
+}
+
+void Node::SetParent(Node& node) noexcept {
+    assert(!node.HasParent(*this) && "Node: Tried to link parent to its child");
+    Unlink();
+    parent_ = &node;
+    node.children_.emplace_back(this);
+}
+
+void Node::AddChild(Node& node) noexcept {
+    node.SetParent(*this);
+}
+
+void Node::Unlink() noexcept {
+    if (parent_ != nullptr) {
+        Node* parent = GetParent();
+        auto it = std::find_if(parent->children_.begin(), parent->children_.end(),
+                               [this](std::unique_ptr<Node>& ptr) { return ptr.get() == this; });
+        assert(it != parent->children_.end() && "Node: Parent does not have info about child");
+        it->release();
+        parent->children_.erase(it);
+    }
 }
 
 void Node::SetPosition(Vector3 new_pos) {
