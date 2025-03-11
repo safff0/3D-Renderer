@@ -150,8 +150,7 @@ Renderer& Renderer::operator=(const Renderer& other) {
     return *this;
 }
 
-Renderer::Renderer(Renderer&& other) noexcept : impl_{other.impl_.release()} {
-}
+Renderer::Renderer(Renderer&& other) noexcept = default;
 
 Renderer& Renderer::operator=(Renderer&& other) noexcept {
     Swap(other);
