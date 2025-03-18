@@ -8,8 +8,8 @@ public:
     void Run();
 
 private:
-    Scene scene_;
-    Renderer renderer_;
+    engine::Scene scene_;
+    engine::Renderer renderer_;
 };
 
 }  // namespace app

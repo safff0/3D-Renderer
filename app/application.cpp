@@ -3,6 +3,14 @@
 
 namespace app {
 
+using engine::Camera;
+using engine::ConstReference;
+using engine::EmptyNode;
+using engine::Object3D;
+using engine::Reference;
+using engine::Renderer;
+using engine::Scene;
+
 void Application::Run() {
     // Usage Example
     Reference<EmptyNode> root = scene_.GetRoot();
