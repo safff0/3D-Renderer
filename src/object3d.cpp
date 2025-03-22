@@ -22,16 +22,10 @@ Object3D Object3D::Cube(Type size) {
     Object3D result;
     for (auto& i : {-1, 1}) {
         Type h = (size + i * size) / 2.0;
-        result.AddFace({{size / 2, h, size / 2},
-                        {-size / 2, h, size / 2},
-                        {-size / 2, h, -size / 2},
-                        {size / 2, h, -size / 2}});
-        for (auto& j : {-1, 1}) {
-            result.AddFace({{i * size / 2, 0, j * size / 2},
-                            {-i * size / 2, 0, j * size / 2},
-                            {-i * size / 2, size, j * size / 2},
-                            {i * size / 2, size, j * size / 2}});
-        }
+        Type w = size / 2;
+        result.AddFace({{w, h, w}, {-w, h, w}, {-w, h, -w}, {w, h, -w}});
+        result.AddFace({{w, 0, i * w}, {-w, 0, i * w}, {-w, size, i * w}, {w, size, i * w}});
+        result.AddFace({{i * w, 0, w}, {i * w, 0, -w}, {i * w, size, -w}, {i * w, size, w}});
     }
     return result;
 }
