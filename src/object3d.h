@@ -12,11 +12,18 @@ public:
 
     static Object3D Cube(Type size = kDefaultObjectSize);
     static Object3D Sphere(Type radius = kDefaultObjectSize,
-                           IndexType subdivide = kDefaultSphereSubdiv);
+                           IndexType subdivide = kDefaultSubdivision);
+    static Object3D Torus(Type radius = kDefaultObjectSize, Type thickness = kDefaultTorusThickness,
+                          IndexType subdivide = kDefaultSubdivision);
+    static Object3D Cylinder(Type radius = kDefaultObjectSize, Type height = kDefaultObjectSize,
+                             IndexType subdivide = kDefaultSubdivision);
+    static Object3D Cone(Type radius = kDefaultObjectSize, Type height = kDefaultObjectSize,
+                         IndexType subdivide = kDefaultSubdivision);
 
 private:
     static constexpr Type kDefaultObjectSize = 1;
-    static constexpr Type kDefaultSphereSubdiv = 10;
+    static constexpr Type kDefaultSubdivision = 20;
+    static constexpr Type kDefaultTorusThickness = 0.4;
 
     void AddPolygon(const Polygon& poly);
     void AddFace(const std::vector<Vector3>& face);
