@@ -3,7 +3,7 @@
 
 int main() {
     try {
-        app::Application app;
+        app::donut::Application app;
         app.Run();
     } catch (...) {
         app::except::React();

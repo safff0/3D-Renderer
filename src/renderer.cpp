@@ -27,7 +27,7 @@ RendererOutput InitOutput(Index width, Index height) {
     result.width = width;
     result.height = height;
     result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
-    result.z_buffer.assign(height, std::vector<Real>(width, kInfinity));
+    result.z_buffer.assign(height, std::vector<Real>(width, 1));
     return result;
 }
 
@@ -39,11 +39,11 @@ public:
     using SizeType = Renderer::SizeType;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                          Height height) const {
+                          Height height, Real stretch_aspect) const {
         std::vector<Polygon> polygons;
         FindPolygons(scene.GetRoot(), polygons);
         PerspectiveProjection(polygons, camera, GetAspectRatio(width, height));
-        Normalize(polygons, width, height);
+        Normalize(polygons, width, height, stretch_aspect);
         return BuildOutput(width, height, polygons);
     }
 
@@ -61,9 +61,10 @@ private:
         return result;
     }
 
-    void Normalize(std::vector<Polygon>& polygons, Width width, Height height) const {
+    void Normalize(std::vector<Polygon>& polygons, Width width, Height height,
+                   Real stretch_aspect) const {
         for (Polygon& poly : polygons) {
-            ToScreenSpace(poly, width, height);
+            ToScreenSpace(poly, width, height, stretch_aspect);
             Reorder(poly);
         }
     }
@@ -114,11 +115,11 @@ private:
         }
     }
 
-    void ToScreenSpace(Polygon& p, Width width, Height height) const {
+    void ToScreenSpace(Polygon& p, Width width, Height height, Real stretch_aspect) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
-            Real new_y = (1.0f - verticies[i].x) / 2.0f * width;
+            Real new_y = (1.0f - verticies[i].x) / 2.0f * width * stretch_aspect;
             verticies[i] = Vector3{std::round(new_x), std::round(new_y), verticies[i].z};
         }
     }
@@ -148,7 +149,7 @@ private:
             }
         }
         for (SizeType i = 0; i < node.GetChildCount(); ++i) {
-            FindPolygons(node.GetChild(i), poly);
+            FindPolygons(node.GetChild(i), poly, transform);
         }
     }
 
@@ -201,8 +202,8 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
 }
 
 RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                                Height height) const {
-    return impl_->Render(scene, camera, width, height);
+                                Height height, Real stretch_aspect) const {
+    return impl_->Render(scene, camera, width, height, stretch_aspect);
 }
 
 void Renderer::Swap(Renderer& other) {

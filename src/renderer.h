@@ -37,7 +37,7 @@ public:
     Renderer& operator=(Renderer&& other) noexcept;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                          Height height) const;
+                          Height height, Real stretch_aspect = 1.0) const;
 
     void Swap(Renderer& other);
 

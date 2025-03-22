@@ -1,4 +1,4 @@
-add_library(3d_renderer
+add_library(3d_renderer STATIC
     geometry.cpp
     node.cpp
     scene.cpp
