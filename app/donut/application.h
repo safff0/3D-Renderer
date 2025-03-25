@@ -13,8 +13,8 @@ namespace app::donut {
 
 class AsciiRenderer {
 public:
-    void Draw(engine::Scene scene, engine::ConstReference<engine::Camera> camera, engine::Width w,
-              engine::Height h) const;
+    void Draw(const engine::Scene& scene, engine::ConstReference<engine::Camera> camera,
+              engine::Width w, engine::Height h) const;
 
 private:
     constexpr static float kAsciiStretchAspect = 1.5;

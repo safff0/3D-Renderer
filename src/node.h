@@ -52,10 +52,15 @@ public:
     template <typename T>
     Node* NewChild(T&& data) noexcept {
         children_.push_back(std::make_unique<Node>(std::forward<T>(data)));
+        children_.back()->parent_ = this;
         return children_.back().get();
     }
 
     const Matrix4& GetTransform() const;
+    const Matrix4& GetReverseTransform() const;
+    Matrix4 GetGlobalTransform() const;
+    Matrix4 GetGlobalReverseTransform() const;
+
     void SetPosition(Vector3 new_pos);
     Vector3 GetPosition() const;
 
@@ -88,6 +93,7 @@ private:
     std::vector<std::unique_ptr<Node>> children_ = {};
 
     Matrix4 transform_ = kDefaultTransform;
+    Matrix4 reverse_transform_ = kDefaultTransform;
 };
 
 }  // namespace engine::details

@@ -30,7 +30,7 @@ const static std::string kAsciiColorPalette = "@$#*!=;:~-,. ";
 
 }  // namespace
 
-void AsciiRenderer::Draw(Scene scene, ConstReference<Camera> camera, engine::Width w,
+void AsciiRenderer::Draw(const Scene& scene, ConstReference<Camera> camera, engine::Width w,
                          engine::Height h) const {
     RendererOutput output = renderer_.Render(scene, camera, w, h, kAsciiStretchAspect);
     PrintOutput(output);

@@ -39,14 +39,15 @@ public:
                           Height height, Real stretch_aspect) const {
         std::vector<Polygon> polygons;
         FindPolygons(scene.GetRoot(), polygons);
-        PerspectiveProjection(polygons, camera, GetAspectRatio(width, height));
+        ViewProjection(polygons, scene, camera);
+        PerspectiveProjection(polygons, camera, GetAspectRatio(width, height, stretch_aspect));
         Normalize(polygons, width, height, stretch_aspect);
         return BuildOutput(width, height, polygons);
     }
 
 private:
-    Real GetAspectRatio(Width width, Height height) const {
-        return static_cast<Real>(width) / height;
+    Real GetAspectRatio(Width width, Height height, Real stretch_aspect) const {
+        return static_cast<Real>(width) / height / stretch_aspect;
     }
 
     RendererOutput BuildOutput(Width width, Height height,
@@ -110,7 +111,7 @@ private:
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
-            Real new_y = (1.0f - verticies[i].x) / 2.0f * width * stretch_aspect;
+            Real new_y = (1.0f - verticies[i].x) / 2.0f * width;
             verticies[i] = Vector3{std::round(new_x), std::round(new_y), verticies[i].z};
         }
     }
@@ -144,16 +145,26 @@ private:
         }
     }
 
-    void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
-                               Real aspect) const {
-        Matrix4 view_matrix = glm::translate<Real>(Matrix4(1.0), -1.0 * camera.GetPosition());
-        Matrix4 projection_matrix = glm::perspective<Real>(glm::radians(camera->GetFOV()), aspect,
-                                                           camera->GetNear(), camera->GetFar());
-        ApplyTransform(poly, projection_matrix * view_matrix, camera->GetNear(), camera->GetFar());
+    void ViewProjection(std::vector<Polygon>& poly, const Scene& scene,
+                        ConstReference<Camera> camera) const {
+        ApplyTransform(poly, camera.GetGlobalReverseTransform());
     }
 
-    void ApplyTransform(std::vector<Polygon>& poly, const Matrix4& transform, Real near,
-                        Real far) const {
+    void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
+                               Real aspect) const {
+        Matrix4 projection_matrix = glm::perspective<Real>(glm::radians(camera->GetFOV()), aspect,
+                                                           camera->GetNear(), camera->GetFar());
+        ApplyProjection(poly, projection_matrix, camera->GetNear(), camera->GetFar());
+    }
+
+    void ApplyTransform(std::vector<Polygon>& poly, const Matrix4& transform) const {
+        for (Polygon& polygon : poly) {
+            polygon.ApplyTransformInplace(transform);
+        }
+    }
+
+    void ApplyProjection(std::vector<Polygon>& poly, const Matrix4& transform, Real near,
+                         Real far) const {
         for (Polygon& polygon : poly) {
             polygon.ApplyProjectionInplace(transform, near, far);
         }

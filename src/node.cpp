@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <cassert>
+#include <glm/ext/matrix_transform.hpp>
+#include <stdexcept>
 #include "alias.h"
 
 namespace engine::details {
@@ -77,35 +79,58 @@ const Matrix4& Node::GetTransform() const {
     return transform_;
 }
 
+const Matrix4& Node::GetReverseTransform() const {
+    return reverse_transform_;
+}
+
+Matrix4 Node::GetGlobalTransform() const {
+    Matrix4 result(1.0);
+    const Node* temp = this;
+    while (temp->parent_ != nullptr) {
+        result = temp->GetTransform() * result;
+        temp = temp->GetParent();
+    }
+    return result;
+}
+
+Matrix4 Node::GetGlobalReverseTransform() const {
+    Matrix4 result(1.0);
+    const Node* temp = this;
+    while (temp->parent_ != nullptr) {
+        result = temp->GetReverseTransform() * result;
+        temp = temp->GetParent();
+    }
+    return result;
+}
+
 void Node::SetPosition(Vector3 new_pos) {
     transform_ = glm::translate<Real>(transform_, new_pos);
+    reverse_transform_ = glm::translate<Real>(Matrix4(1.0), -new_pos) * reverse_transform_;
 }
 
 void Node::SetRotationX(Real angle) {
-    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(1.0f, 0.0f, 0.0f));
+    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(1.0, 0.0, 0.0));
+    reverse_transform_ =
+        glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(1.0, 0.0, 0.0)) *
+        reverse_transform_;
 }
 
 void Node::SetRotationY(Real angle) {
-    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0f, 1.0f, 0.0f));
+    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0, 1.0, 0.0));
+    reverse_transform_ =
+        glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(0.0, 1.0, 0.0)) *
+        reverse_transform_;
 }
 
 void Node::SetRotationZ(Real angle) {
-    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0f, 0.0f, 1.0f));
+    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0, 0.0, 1.0));
+    reverse_transform_ =
+        glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(0.0, 0.0, 1.0)) *
+        reverse_transform_;
 }
 
 Vector3 Node::GetPosition() const {
-    const Node* root = this;
-    std::vector<const Node*> path;
-    while (root) {
-        path.push_back(root);
-        root = root->parent_;
-    }
-    std::reverse(path.begin(), path.end());
-    Matrix4 global_transform = kDefaultTransform;
-    for (auto& node : path) {
-        global_transform *= node->transform_;
-    }
-    return global_transform[3];
+    return GetGlobalTransform()[3];
 }
 
 bool Node::HasParent(const Node& other_node) const {

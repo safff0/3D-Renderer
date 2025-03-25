@@ -46,6 +46,12 @@ class ReferenceImpl<EmptyNode, IsConst> : protected NodeController<IsConst> {
     template <NoQualifiers OtherDataT, bool OtherConst>
     friend class ReferenceImpl;
 
+    template <NoQualifiers T1, bool C1, NoQualifiers T2, bool C2>
+    friend bool operator==(ReferenceImpl<T1, C1> ref1, ReferenceImpl<T2, C2> ref2);
+
+    template <NoQualifiers T1, bool C1, NoQualifiers T2, bool C2>
+    friend bool operator!=(ReferenceImpl<T1, C1> ref1, ReferenceImpl<T2, C2> ref2);
+
     using Base = NodeController<IsConst>;
     using Base::node_;
     using IndexType = Node::IndexType;
@@ -112,6 +118,18 @@ public:
 
     const Matrix4& GetTransform() {
         return node_->GetTransform();
+    }
+
+    const Matrix4& GetReverseTransform() {
+        return node_->GetReverseTransform();
+    }
+
+    Matrix4 GetGlobalTransform() {
+        return node_->GetGlobalTransform();
+    }
+
+    Matrix4 GetGlobalReverseTransform() {
+        return node_->GetGlobalReverseTransform();
     }
 
     template <typename = std::enable_if<!IsConst>>
