@@ -4,17 +4,20 @@
 
 namespace engine {
 
-using Real = float;
+using Real = double;
 using Index = int32_t;
 
 const static Real kInfinity = 1e9;
-const static Real kEps = 1e-6;
+const static Real kEps = 1e-4;
 
 using Vector2 = glm::vec<2, Real>;
 using Vector3 = glm::vec<3, Real>;
 using Vector4 = glm::vec<4, Real>;
 using Matrix3 = glm::mat<3, 3, Real>;
 using Matrix4 = glm::mat<4, 4, Real>;
+
+using Triangle3D = std::array<Vector3, 3>;
+using Triangle2D = std::array<Vector2, 3>;
 
 template <class T, class Tag>
 struct Alias {

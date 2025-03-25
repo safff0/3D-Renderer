@@ -19,14 +19,11 @@ namespace engine {
 namespace details {
 
 namespace {
-const std::string kColorScheme =
-    "$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/|()1{}[]?-_+~<>i!lI;:,. ";
 
 RendererOutput InitOutput(Index width, Index height) {
     RendererOutput result;
     result.width = width;
     result.height = height;
-    result.data.assign(height, std::vector<char>(width, kColorScheme.back()));
     result.z_buffer.assign(height, std::vector<Real>(width, 1));
     return result;
 }
@@ -69,10 +66,6 @@ private:
         }
     }
 
-    char GetShade(Real z) const {
-        return kColorScheme[(kColorScheme.size() - 1) * (z + 1) / 2];
-    }
-
     void DrawPolygon(RendererOutput& result, const Polygon& p) const {
         const auto& verticies = p.GetVerticies();
         const auto& z_buf = p.GetZBuffer();
@@ -87,8 +80,7 @@ private:
             }
             for (SizeType y = y1 - 1; y < y2 + 1; ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
-                    result.data[x][y] = GetShade(z_buf[0]);
-                    result.z_buffer[x][y] = z_buf[0];
+                    result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
                 }
             }
         }
@@ -100,16 +92,15 @@ private:
             }
             for (SizeType y = y1 - 1; y < y2 + 1; ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
-                    result.data[x][y] = GetShade(z_buf[0]);
-                    result.z_buffer[x][y] = z_buf[0];
+                    result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
                 }
             }
         }
         if (verticies[1].x == verticies[2].x) {
             for (SizeType y = verticies[1].y - 1; y <= verticies[2].y; ++y) {
                 if (z_buf[0] < result.z_buffer[verticies[1].x][y]) {
-                    result.data[verticies[1].x][y] = GetShade(z_buf[0]);
-                    result.z_buffer[verticies[1].x][y] = z_buf[0];
+                    result.z_buffer[verticies[1].x][y] =
+                        GetZProjectionCoordinate({verticies[1].x, y}, p);
                 }
             }
         }
@@ -155,7 +146,7 @@ private:
 
     void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
                                Real aspect) const {
-        Matrix4 view_matrix = glm::translate<Real>(Matrix4(1.0), -1.0f * camera.GetPosition());
+        Matrix4 view_matrix = glm::translate<Real>(Matrix4(1.0), -1.0 * camera.GetPosition());
         Matrix4 projection_matrix = glm::perspective<Real>(glm::radians(camera->GetFOV()), aspect,
                                                            camera->GetNear(), camera->GetFar());
         ApplyTransform(poly, projection_matrix * view_matrix, camera->GetNear(), camera->GetFar());
@@ -170,15 +161,6 @@ private:
 };
 
 }  // namespace details
-
-void Print(const RendererOutput& output) {
-    for (Index i = 0; i < output.data.size(); ++i) {
-        for (Index j = 0; j < output.data[i].size(); ++j) {
-            std::cout << output.data[i][j];
-        }
-        std::cout << std::endl;
-    }
-}
 
 Renderer::Renderer() : impl_(std::make_unique<RendererImpl>()) {
 }

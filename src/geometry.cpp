@@ -1,10 +1,10 @@
 #include "geometry.h"
+#include "alias.h"
 
 #include <glm/vec3.hpp>
 
 #include <array>
 #include <initializer_list>
-#include <iostream>
 
 namespace engine {
 
@@ -15,14 +15,6 @@ Real GetZBufferCoordinate(Real z, Real near, Real far) {
 }
 
 }  // namespace
-
-Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform) {
-    return transform * to;
-}
-
-Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform) {
-    return transform * Vector4(to, 1.0f);
-}
 
 Line2::Line2(Vector2 from, Vector2 to)
     : a_{to.y - from.y}, b_{from.x - to.x}, c_{to.x * from.y - to.y * from.x} {
@@ -40,6 +32,42 @@ Line2::Type Line2::GetY(Type x) const {
 
 Line2::Type Line2::EquationValue(Vector2 point) const {
     return a_ * point.x + b_ * point.y + c_;
+}
+
+Plane3::Plane3(Vector3 p1, Vector3 p2, Vector3 p3)
+    : a_{(p2.y - p1.y) * (p3.z - p1.z) - (p2.z - p1.z) * (p3.y - p1.y)},
+      b_{(p2.z - p1.z) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.z - p1.z)},
+      c_{(p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x)} {
+    d_ = -(a_ * p1.x + b_ * p1.y + c_ * p1.z);
+}
+
+Plane3::Plane3(const Triangle3D& points) : Plane3{points[0], points[1], points[2]} {
+}
+
+Plane3::Plane3(const Polygon& points) : Plane3{points.GetVerticies()} {
+}
+
+Plane3::Type Plane3::GetX(Vector2 yz_proj) const {
+    assert(std::abs(a_) > kEps && "Geometry: Plane3 zero division");
+    return -(b_ * yz_proj[0] + c_ * yz_proj[1] + d_) / a_;
+}
+
+Plane3::Type Plane3::GetY(Vector2 xz_proj) const {
+    assert(std::abs(b_) > kEps && "Geometry: Plane3 zero division");
+    return -(a_ * xz_proj[0] + c_ * xz_proj[1] + d_) / b_;
+}
+
+Plane3::Type Plane3::GetZ(Vector2 xy_proj) const {
+    assert(std::abs(c_) > kEps && "Geometry: Plane3 zero division");
+    return -(a_ * xy_proj[0] + b_ * xy_proj[1] + d_) / c_;
+}
+
+Plane3::Type Plane3::EquationValue(Vector3 point) const {
+    return a_ * point.x + b_ * point.y + c_ * point.z + d_;
+}
+
+std::array<Plane3::Type, 4> Plane3::GetCoefficients() const {
+    return {a_, b_, c_, d_};
 }
 
 Polygon::Polygon(const std::array<Vector3, kVerticiesCount>& init) : data_(init) {
@@ -65,6 +93,7 @@ void Polygon::ApplyProjectionInplace(const Matrix4& transform, Real near, Real f
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
         z_buffer_[i] = GetZBufferCoordinate(tmp.z, near, far);
+        data_[i].z = z_buffer_[i];
     }
 }
 
@@ -80,7 +109,7 @@ void Polygon::ApplyTransformInplace(const Matrix4& transform) {
     }
 }
 
-const std::array<Vector3, Polygon::kVerticiesCount>& Polygon::GetVerticies() const {
+const Triangle3D& Polygon::GetVerticies() const {
     return data_;
 }
 
@@ -88,12 +117,47 @@ const std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() const {
     return z_buffer_;
 }
 
-std::array<Vector3, Polygon::kVerticiesCount>& Polygon::GetVerticies() {
+Triangle3D& Polygon::GetVerticies() {
     return data_;
 }
 
 std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() {
     return z_buffer_;
+}
+
+Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly) {
+    auto plane = Plane3{poly};
+    if (std::abs(plane.GetCoefficients()[2]) < kEps) {
+        Real min_z = kInfinity;
+        for (size_t i = 0; i < Polygon::kVerticiesCount; ++i) {
+            min_z = std::min(min_z, poly.GetVerticies()[i].z);
+        }
+        return min_z;
+    }
+    return plane.GetZ(point);
+}
+
+Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform) {
+    return transform * to;
+}
+
+Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform) {
+    return transform * Vector4(to, 1.0f);
+}
+
+bool PointInTriangle2D(Vector2 point, const Triangle2D& poly) {
+    return true;
+}
+
+bool IsDegenerate(const Triangle2D& poly) {
+    for (size_t d = 0; d < 2; ++d) {
+        Real max_c = std::max({poly[0][d], poly[1][d], poly[2][d]});
+        Real min_c = std::min({poly[0][d], poly[1][d], poly[2][d]});
+        if (max_c - min_c < 0.01) {
+            return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace engine

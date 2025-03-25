@@ -2,6 +2,7 @@
 #include "alias.h"
 #include "engine_fwd.h"
 #include "node.h"
+#include "object3d.h"
 #include "renderer.h"
 
 #include <chrono>
@@ -50,8 +51,8 @@ char AsciiRenderer::GetShade(float z_value, float min_z, float max_z) const {
 }
 
 void AsciiRenderer::PrintOutput(const RendererOutput& img) const {
-    float max_z = -1;
-    float min_z = 1;
+    engine::Real max_z = -1;
+    engine::Real min_z = 1;
     for (size_t i = 0; i < img.height; ++i) {
         for (size_t j = 0; j < img.width; ++j) {
             if (img.z_buffer[i][j] < 1) {
@@ -70,8 +71,7 @@ void AsciiRenderer::PrintOutput(const RendererOutput& img) const {
 
 void Application::Run() {
     auto root = scene_.GetRoot();
-    auto camera =
-        root.NewChild<Camera>(Camera{Camera::Far{10}, Camera::Near{0.1}, Camera::FOV{50}});
+    auto camera = root.NewChild(Camera{Camera::Far{10}, Camera::Near{0.1}, Camera::FOV{50}});
     camera.SetPosition({0, 0, -4});
     auto donut = root.NewChild(Object3D::Torus(1, 0.5, 50));
 

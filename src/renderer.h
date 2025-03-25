@@ -11,7 +11,6 @@ namespace engine {
 struct RendererOutput {
     Index width;
     Index height;
-    std::vector<std::vector<char>> data;
     std::vector<std::vector<Real>> z_buffer;
 };
 
@@ -20,8 +19,6 @@ class RendererImpl;
 }
 
 class Scene;
-
-void Print(const RendererOutput& output);
 
 class Renderer {
     using RendererImpl = details::RendererImpl;
