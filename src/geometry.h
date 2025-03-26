@@ -45,7 +45,7 @@ public:
     Type GetZ(Vector2 xy_proj) const;
 
     Type EquationValue(Vector3 point) const;
-    std::array<Type, 4> GetCoefficients() const;
+    Vector4 GetCoefficients() const;
 
 private:
     // ax + by + cz + d = 0
@@ -74,6 +74,8 @@ public:
     const std::array<Real, kVerticiesCount>& GetZBuffer() const;
     Triangle3D& GetVerticies();
     std::array<Real, kVerticiesCount>& GetZBuffer();
+
+    Vector3 GetNormal() const;
 
 private:
     Triangle3D data_;

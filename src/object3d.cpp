@@ -24,15 +24,17 @@ const std::vector<Polygon>& Object3D::GetMesh() const {
     return mesh_;
 }
 
+// Не придумал, как нормально сделать, учитывая, что важен порядок перечисления вершин (для
+// правильных нормалей)
 Object3D Object3D::Cube(Type size) {
     Object3D result;
-    for (auto& i : {-1, 1}) {
-        Type h = (size + i * size) / 2.0;
-        Type w = size / 2;
-        result.AddFace({{w, h, w}, {-w, h, w}, {-w, h, -w}, {w, h, -w}});
-        result.AddFace({{w, 0, i * w}, {-w, 0, i * w}, {-w, size, i * w}, {w, size, i * w}});
-        result.AddFace({{i * w, 0, w}, {i * w, 0, -w}, {i * w, size, -w}, {i * w, size, w}});
-    }
+    Type w = size / 2;
+    result.AddFace({{w, size, w}, {-w, size, w}, {-w, size, -w}, {w, size, -w}});
+    result.AddFace({{w, 0, w}, {w, 0, -w}, {-w, 0, -w}, {-w, 0, w}});
+    result.AddFace({{w, 0, -w}, {w, 0, w}, {w, size, w}, {w, size, -w}});
+    result.AddFace({{-w, 0, -w}, {-w, size, -w}, {-w, size, w}, {-w, 0, w}});
+    result.AddFace({{-w, 0, -w}, {w, 0, -w}, {w, size, -w}, {-w, size, -w}});
+    result.AddFace({{-w, 0, w}, {-w, size, w}, {w, size, w}, {w, 0, w}});
     return result;
 }
 
@@ -42,9 +44,9 @@ Object3D Object3D::Sphere(Type radius, IndexType subdiv) {
     for (Type phi = 0; phi < 2 * pi; phi += pi / subdiv) {
         for (Type psi = -pi / 2; psi < pi / 2; psi += pi / subdiv) {
             Vector3 p1 = GetSphericalCoordinates(radius, phi, psi);
-            Vector3 p2 = GetSphericalCoordinates(radius, phi + pi / subdiv, psi);
+            Vector3 p2 = GetSphericalCoordinates(radius, phi, psi + pi / subdiv);
             Vector3 p3 = GetSphericalCoordinates(radius, phi + pi / subdiv, psi + pi / subdiv);
-            Vector3 p4 = GetSphericalCoordinates(radius, phi, psi + pi / subdiv);
+            Vector3 p4 = GetSphericalCoordinates(radius, phi + pi / subdiv, psi);
             result.AddFace({p1, p2, p3, p4});
         }
     }
@@ -57,10 +59,10 @@ Object3D Object3D::Torus(Type radius, Type thickness, IndexType subdiv) {
     for (Type phi = 0; phi < 2 * pi; phi += 2 * pi / subdiv) {
         for (Type psi = 0; psi < 2 * pi; psi += 2 * pi / subdiv) {
             Vector3 p1 = GetToroidalCoordinates(radius, thickness, phi, psi);
-            Vector3 p2 = GetToroidalCoordinates(radius, thickness, phi + 2 * pi / subdiv, psi);
+            Vector3 p2 = GetToroidalCoordinates(radius, thickness, phi, psi + 2 * pi / subdiv);
             Vector3 p3 = GetToroidalCoordinates(radius, thickness, phi + 2 * pi / subdiv,
                                                 psi + 2 * pi / subdiv);
-            Vector3 p4 = GetToroidalCoordinates(radius, thickness, phi, psi + 2 * pi / subdiv);
+            Vector3 p4 = GetToroidalCoordinates(radius, thickness, phi + 2 * pi / subdiv, psi);
             result.AddFace({p1, p2, p3, p4});
         }
     }
@@ -75,9 +77,9 @@ Object3D Object3D::Cylinder(Type radius, Type height, IndexType subdiv) {
         Type z1 = radius * glm::sin(phi);
         Type x2 = radius * glm::cos(phi + 2 * pi / subdiv);
         Type z2 = radius * glm::sin(phi + 2 * pi / subdiv);
-        result.AddFace({{x1, 0, z1}, {x1, height, z1}, {x2, height, z2}, {x2, 0, z2}});
+        result.AddFace({{x1, 0, z1}, {x2, 0, z2}, {x2, height, z2}, {x1, height, z1}});
         result.AddFace({{x1, 0, z1}, {0, 0, 0}, {x2, 0, z2}});
-        result.AddFace({{x1, height, z1}, {0, height, 0}, {x2, height, z2}});
+        result.AddFace({{x1, height, z1}, {x2, height, z2}, {0, height, 0}});
     }
     return result;
 }

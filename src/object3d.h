@@ -25,6 +25,7 @@ private:
     static constexpr Type kDefaultSubdivision = 20;
     static constexpr Type kDefaultTorusThickness = 0.4;
 
+    // Counter clockwise for polygons facing camera
     void AddPolygon(const Polygon& poly);
     void AddFace(const std::vector<Vector3>& face);
 

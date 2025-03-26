@@ -66,7 +66,7 @@ Plane3::Type Plane3::EquationValue(Vector3 point) const {
     return a_ * point.x + b_ * point.y + c_ * point.z + d_;
 }
 
-std::array<Plane3::Type, 4> Plane3::GetCoefficients() const {
+Vector4 Plane3::GetCoefficients() const {
     return {a_, b_, c_, d_};
 }
 
@@ -123,6 +123,10 @@ Triangle3D& Polygon::GetVerticies() {
 
 std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() {
     return z_buffer_;
+}
+
+Vector3 Polygon::GetNormal() const {
+    return Plane3(*this).GetCoefficients();
 }
 
 Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly) {

@@ -42,11 +42,12 @@ void AsciiRenderer::ResetScreen() const {
 }
 
 char AsciiRenderer::GetShade(float z_value, float min_z, float max_z) const {
-    assert(z_value >= -1 && z_value <= 1 && "AsciiRender: z_buffer value is out of range");
-    size_t index = (z_value - min_z) / (max_z - min_z) * (kAsciiColorPalette.size() - 2);
-    if (index >= kAsciiColorPalette.size()) {
-        index = kAsciiColorPalette.size() - 1;
+    if (z_value > 1 - engine::kEps) {
+        // background
+        return kAsciiColorPalette.back();
     }
+    size_t index = (z_value - min_z) / (max_z - min_z) * (kAsciiColorPalette.size() - 2);
+    index = std::min(index, kAsciiColorPalette.size() - 1);
     return kAsciiColorPalette[index];
 }
 
@@ -71,7 +72,7 @@ void AsciiRenderer::PrintOutput(const RendererOutput& img) const {
 
 void Application::Run() {
     auto root = scene_.GetRoot();
-    auto camera = root.NewChild(Camera{Camera::Far{10}, Camera::Near{0.1}, Camera::FOV{50}});
+    auto camera = root.NewChild(Camera{Camera::Far{20}, Camera::Near{0.1}, Camera::FOV{50}});
     camera.SetPosition({0, 0, -4});
     auto donut = root.NewChild(Object3D::Torus(1, 0.5, 50));
 

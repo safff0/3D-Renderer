@@ -11,7 +11,6 @@
 #include <glm/glm.hpp>
 
 #include <cassert>
-#include <iostream>
 #include <vector>
 
 namespace engine {
@@ -38,11 +37,14 @@ public:
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
                           Height height, Real stretch_aspect) const {
         std::vector<Polygon> polygons;
-        FindPolygons(scene.GetRoot(), polygons);
-        ViewProjection(polygons, scene, camera);
-        PerspectiveProjection(polygons, camera, GetAspectRatio(width, height, stretch_aspect));
-        Normalize(polygons, width, height, stretch_aspect);
-        return BuildOutput(width, height, polygons);
+        FindPolygons(scene.GetRoot(), polygons);  // Divide scene into polygons
+        ViewProjection(polygons, scene, camera);  // Transform polygons into camera relative space
+        Filter(polygons, camera);                 // Discard not visible polygons
+        PerspectiveProjection(
+            polygons, camera,
+            GetAspectRatio(width, height, stretch_aspect));  // Perform perspective projection
+        Normalize(polygons, width, height, stretch_aspect);  // Prepare polygons for rasterization
+        return BuildOutput(width, height, polygons);         // Rasterize
     }
 
 private:
@@ -148,6 +150,16 @@ private:
     void ViewProjection(std::vector<Polygon>& poly, const Scene& scene,
                         ConstReference<Camera> camera) const {
         ApplyTransform(poly, camera.GetGlobalReverseTransform());
+    }
+
+    void Filter(std::vector<Polygon>& poly, ConstReference<Camera> camera) const {
+        std::vector<Polygon> new_poly;
+        for (auto& p : poly) {
+            if (glm::dot(p.GetNormal(), Vector3(0, 0, 1)) >= 0) {
+                new_poly.push_back(p);
+            }
+        }
+        poly = new_poly;
     }
 
     void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
