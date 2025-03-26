@@ -11,6 +11,8 @@
 #include <glm/glm.hpp>
 
 #include <cassert>
+#include <cmath>
+#include <iostream>
 #include <vector>
 
 namespace engine {
@@ -27,6 +29,40 @@ RendererOutput InitOutput(Index width, Index height) {
     return result;
 }
 
+struct ViewFrustum {
+    explicit ViewFrustum(const Matrix4& pm)
+        : left{pm[0][3] + pm[0][0], pm[1][3] + pm[1][0], pm[2][3] + pm[3][0], pm[3][3] + pm[3][0]},
+          right{pm[0][3] - pm[0][0], pm[1][3] - pm[1][0], pm[2][3] - pm[3][0], pm[3][3] - pm[3][0]},
+          bottom{pm[0][3] + pm[0][1], pm[1][3] + pm[1][1], pm[2][3] + pm[2][1],
+                 pm[3][3] + pm[3][1]},
+          top{pm[0][3] - pm[0][1], pm[1][3] - pm[1][1], pm[2][3] - pm[2][1], pm[3][3] - pm[3][1]},
+          near{pm[0][2], pm[1][2], pm[2][2], pm[3][2]} {
+    }
+
+    Plane3 left;
+    Plane3 right;
+    Plane3 bottom;
+    Plane3 top;
+    Plane3 near;
+};
+
+bool PointInFrustum(Vector3 p, const ViewFrustum& vf) {
+    return vf.bottom.EquationValue(p) < kEps && vf.top.EquationValue(p) < kEps &&
+           vf.left.EquationValue(p) < kEps && vf.right.EquationValue(p) < kEps &&
+           vf.near.EquationValue(p) < kEps;
+}
+
+bool PolygonInFrustum(const Polygon& poly, const ViewFrustum& vf) {
+    return PointInFrustum(poly.GetVerticies()[0], vf) &&
+           PointInFrustum(poly.GetVerticies()[1], vf) && PointInFrustum(poly.GetVerticies()[2], vf);
+}
+
+bool PolygonOutsideFrustum(const Polygon& poly, const ViewFrustum& vf) {
+    return !PointInFrustum(poly.GetVerticies()[0], vf) &&
+           !PointInFrustum(poly.GetVerticies()[1], vf) &&
+           !PointInFrustum(poly.GetVerticies()[2], vf);
+}
+
 }  // namespace
 
 class RendererImpl {
@@ -40,6 +76,7 @@ public:
         FindPolygons(scene.GetRoot(), polygons);  // Divide scene into polygons
         ViewProjection(polygons, scene, camera);  // Transform polygons into camera relative space
         Filter(polygons, camera);                 // Discard not visible polygons
+        Clip(polygons, camera, GetAspectRatio(width, height, stretch_aspect));  // Clipping
         PerspectiveProjection(
             polygons, camera,
             GetAspectRatio(width, height, stretch_aspect));  // Perform perspective projection
@@ -81,7 +118,7 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = y1 - 1; y < y2 + 1; ++y) {
+            for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
                     result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
                 }
@@ -93,14 +130,15 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = y1 - 1; y < y2 + 1; ++y) {
+            for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
                 if (z_buf[0] < result.z_buffer[x][y]) {
                     result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
                 }
             }
         }
         if (verticies[1].x == verticies[2].x) {
-            for (SizeType y = verticies[1].y - 1; y <= verticies[2].y; ++y) {
+            for (SizeType y = std::max(0.0, verticies[1].y - 1);
+                 y <= std::min(verticies[2].y, result.width - 1.0); ++y) {
                 if (z_buf[0] < result.z_buffer[verticies[1].x][y]) {
                     result.z_buffer[verticies[1].x][y] =
                         GetZProjectionCoordinate({verticies[1].x, y}, p);
@@ -115,6 +153,8 @@ private:
             Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
             Real new_y = (1.0f - verticies[i].x) / 2.0f * width;
             verticies[i] = Vector3{std::round(new_x), std::round(new_y), verticies[i].z};
+            verticies[i].x = std::max(0.0, std::min(verticies[i].x, height - 1.0));
+            verticies[i].y = std::max(0.0, std::min(verticies[i].y, width - 1.0));
         }
     }
 
@@ -162,10 +202,28 @@ private:
         poly = new_poly;
     }
 
+    Matrix4 GetProjectionMatrix(ConstReference<Camera> camera, Real aspect) const {
+        return glm::perspective<Real>(glm::radians(camera->GetFOV()), aspect, camera->GetNear(),
+                                      camera->GetFar());
+    }
+
+    void Clip(std::vector<Polygon>& poly, ConstReference<Camera> camera, Real aspect) const {
+        ViewFrustum vf(GetProjectionMatrix(camera, aspect));
+        std::vector<Polygon> new_poly;
+        for (const auto& p : poly) {
+            if (PolygonInFrustum(p, vf)) {
+                new_poly.push_back(p);
+            } else if (!PolygonOutsideFrustum(p, vf)) {
+                // TODO: For better clipping intersect polygon and frustum
+                new_poly.push_back(p);
+            }
+        }
+        poly = new_poly;
+    }
+
     void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
                                Real aspect) const {
-        Matrix4 projection_matrix = glm::perspective<Real>(glm::radians(camera->GetFOV()), aspect,
-                                                           camera->GetNear(), camera->GetFar());
+        Matrix4 projection_matrix = GetProjectionMatrix(camera, aspect);
         ApplyProjection(poly, projection_matrix, camera->GetNear(), camera->GetFar());
     }
 

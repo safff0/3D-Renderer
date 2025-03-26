@@ -5,6 +5,7 @@
 
 #include <array>
 #include <initializer_list>
+#include <stdexcept>
 
 namespace engine {
 
@@ -34,6 +35,9 @@ Line2::Type Line2::EquationValue(Vector2 point) const {
     return a_ * point.x + b_ * point.y + c_;
 }
 
+Line3::Line3(Vector3 from, Vector3 to) : point_{from}, direction_{to - from} {
+}
+
 Plane3::Plane3(Vector3 p1, Vector3 p2, Vector3 p3)
     : a_{(p2.y - p1.y) * (p3.z - p1.z) - (p2.z - p1.z) * (p3.y - p1.y)},
       b_{(p2.z - p1.z) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.z - p1.z)},
@@ -45,6 +49,9 @@ Plane3::Plane3(const Triangle3D& points) : Plane3{points[0], points[1], points[2
 }
 
 Plane3::Plane3(const Polygon& points) : Plane3{points.GetVerticies()} {
+}
+
+Plane3::Plane3(Type a, Type b, Type c, Type d) : a_{a}, b_{b}, c_{c}, d_{d} {
 }
 
 Plane3::Type Plane3::GetX(Vector2 yz_proj) const {
@@ -162,6 +169,11 @@ bool IsDegenerate(const Triangle2D& poly) {
         }
     }
     return false;
+}
+
+Line3 IntersectPlanes(Plane3 p1, Plane3 p2) {
+    // TODO: for better clipping process
+    throw std::runtime_error{"Not implemented"};
 }
 
 }  // namespace engine

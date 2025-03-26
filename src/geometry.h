@@ -29,6 +29,16 @@ private:
     Type c_;
 };
 
+class Line3 {
+public:
+    Line3() = delete;
+    explicit Line3(Vector3 from, Vector3 to);
+
+private:
+    Vector3 point_;
+    Vector3 direction_;
+};
+
 class Polygon;
 
 class Plane3 {
@@ -39,6 +49,7 @@ public:
     Plane3(Vector3 p1, Vector3 p2, Vector3 p3);
     Plane3(const Triangle3D& points);
     Plane3(const Polygon& points);
+    explicit Plane3(Type a, Type b, Type c, Type d);
 
     Type GetX(Vector2 yz_proj) const;
     Type GetY(Vector2 xz_proj) const;
@@ -90,5 +101,7 @@ Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform);
 bool PointInTriangle2D(Vector2 point, const Triangle2D& poly);
 
 bool IsDegenerate(const Triangle2D& poly);
+
+Line3 IntersectPlanes(Plane3 p1, Plane3 p2);
 
 }  // namespace engine
