@@ -100,6 +100,7 @@ private:
 };
 
 Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly);
+Vector3 Centroid(const Triangle3D& poly);
 
 Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform);
 Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform);

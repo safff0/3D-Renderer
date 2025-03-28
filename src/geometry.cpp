@@ -137,7 +137,7 @@ Vector3 Polygon::GetNormal() const {
 }
 
 void Polygon::SetColor(Color new_color) {
-    assert(colors::IsCorrect(new_color) && "Polygon: got unexpected color");
+    assert(colors::IsCorrect(new_color) && "Polygon: Invalid color value");
     color_ = new_color;
 }
 
@@ -155,6 +155,10 @@ Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly) {
         return min_z;
     }
     return plane.GetZ(point);
+}
+
+Vector3 Centroid(const Triangle3D& poly) {
+    return (poly[0] + poly[1] + poly[2]) / 3.0;
 }
 
 Vector3 PointApplyTransform(Vector3 to, const Matrix3& transform) {

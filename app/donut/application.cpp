@@ -1,6 +1,7 @@
 #include "application.h"
 #include "alias.h"
 #include "engine_fwd.h"
+#include "light.h"
 #include "node.h"
 #include "object3d.h"
 #include "renderer.h"
@@ -15,6 +16,7 @@ namespace app::donut {
 using engine::Camera;
 using engine::ConstReference;
 using engine::EmptyNode;
+using engine::LightSource;
 using engine::Object3D;
 using engine::Reference;
 using engine::Renderer;
@@ -25,7 +27,7 @@ namespace {
 const static std::string kResetCommand = "\033[" + std::to_string(Application::kHeight) + "A";
 
 const static std::chrono::duration kSleepTime = std::chrono::milliseconds(30);
-const static float kRotationSpeed = 1.2;
+const static float kRotationSpeed = 3;
 
 const static std::string kAsciiColorPalette = "@$#*!=;:~-,. ";
 
@@ -58,6 +60,10 @@ const static std::map<engine::Color, std::string, ColorCmp> kColorMap{
     {engine::colors::kColorCyan, kConsoleColorCyan},
     {engine::colors::kColorWhite, kConsoleColorWhite}};
 
+engine::Real ColorDistance(engine::Color a, engine::Color b) {
+    return glm::length(static_cast<engine::Vector3>(a) - static_cast<engine::Vector3>(b));
+}
+
 }  // namespace
 
 void AsciiRenderer::Draw(const Scene& scene, ConstReference<Camera> camera, engine::Width w,
@@ -83,10 +89,16 @@ char AsciiRenderer::GetShade(const RendererOutput& img, Index i, Index j, float 
 }
 
 std::string AsciiRenderer::GetColor(const RendererOutput& img, Index i, Index j) const {
-    if (kColorMap.find(img.surface_color[i][j]) == kColorMap.end()) {  // unsupported color
-        return kConsoleColorWhite;
+    engine::Color c = img.visible_color[i][j];
+    engine::Real distance = ColorDistance(engine::colors::kColorWhite, c);
+    std::string result = kConsoleColorWhite;
+    for (const auto& [engine_color, console_color] : kColorMap) {
+        if (ColorDistance(engine_color, c) < distance) {
+            distance = ColorDistance(engine_color, c);
+            result = console_color;
+        }
     }
-    return kColorMap.at(img.surface_color[i][j]);
+    return result;
 }
 
 void AsciiRenderer::PrintOutput(const RendererOutput& img) const {
@@ -113,7 +125,8 @@ void Application::Run() {
     auto camera = root.NewChild(Camera{Camera::Far{20}, Camera::Near{0.1}, Camera::FOV{50}});
     camera.SetPosition({0, 0, -4});
     auto donut = root.NewChild(Object3D::Torus(1, 0.5, 50));
-    donut->SetColor(engine::colors::kColorPink);
+    auto lights = root.NewChild(LightSource());
+    lights.SetPosition({0, 0, -5});
 
     while (true) {
         Update(donut, camera);

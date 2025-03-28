@@ -2,6 +2,7 @@
 #include "alias.h"
 #include "camera.h"
 #include "geometry.h"
+#include "light.h"
 #include "node.h"
 #include "object3d.h"
 #include "reference.h"
@@ -21,12 +22,15 @@ namespace details {
 
 namespace {
 
+const static Real kAmbientLightEnergy = 0.2;
+
 RendererOutput InitOutput(Index width, Index height) {
     RendererOutput result;
     result.width = width;
     result.height = height;
     result.z_buffer.assign(height, std::vector<Real>(width, 1));
     result.surface_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
+    result.visible_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
     return result;
 }
 
@@ -64,6 +68,11 @@ bool PolygonOutsideFrustum(const Polygon& poly, const ViewFrustum& vf) {
            !PointInFrustum(poly.GetVerticies()[2], vf);
 }
 
+struct LightInfo {
+    Vector3 position;
+    LightSource info;
+};
+
 }  // namespace
 
 class RendererImpl {
@@ -74,15 +83,19 @@ public:
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
                           Height height, Real stretch_aspect) const {
         std::vector<Polygon> polygons;
-        FindPolygons(scene.GetRoot(), polygons);  // Divide scene into polygons
-        ViewProjection(polygons, scene, camera);  // Transform polygons into camera relative space
-        Filter(polygons, camera);                 // Discard not visible polygons
+        std::vector<LightInfo> lights;
+        FindKeyObjects(scene.GetRoot(), polygons,
+                       lights);  // Divide scene into polygons and light sources
+        ViewProjection(polygons, lights, scene,
+                       camera);    // Transform polygons into camera relative space
+        Filter(polygons, camera);  // Discard not visible polygons
         Clip(polygons, camera, GetAspectRatio(width, height, stretch_aspect));  // Clipping
+        auto visible_colors = GetVisibleColors(polygons, lights);
         PerspectiveProjection(
             polygons, camera,
             GetAspectRatio(width, height, stretch_aspect));  // Perform perspective projection
         Normalize(polygons, width, height, stretch_aspect);  // Prepare polygons for rasterization
-        return BuildOutput(width, height, polygons);         // Rasterize
+        return BuildOutput(width, height, polygons, visible_colors);  // Rasterize
     }
 
 private:
@@ -90,11 +103,11 @@ private:
         return static_cast<Real>(width) / height / stretch_aspect;
     }
 
-    RendererOutput BuildOutput(Width width, Height height,
-                               const std::vector<Polygon>& polygons) const {
+    RendererOutput BuildOutput(Width width, Height height, const std::vector<Polygon>& polygons,
+                               const std::vector<Color>& colors) const {
         RendererOutput result = InitOutput(width, height);
-        for (const Polygon& poly : polygons) {
-            DrawPolygon(result, poly);
+        for (Index i = 0; i < polygons.size(); ++i) {
+            DrawPolygon(result, polygons[i], colors[i]);
         }
         return result;
     }
@@ -107,14 +120,16 @@ private:
         }
     }
 
-    void UpdateResult(RendererOutput& result, Index x, Index y, const Polygon& p) const {
+    void UpdateResult(RendererOutput& result, Index x, Index y, const Polygon& p,
+                      Color color) const {
         if (GetZProjectionCoordinate({x, y}, p) < result.z_buffer[x][y]) {
             result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
             result.surface_color[x][y] = p.GetColor();
+            result.visible_color[x][y] = color;
         }
     }
 
-    void DrawPolygon(RendererOutput& result, const Polygon& p) const {
+    void DrawPolygon(RendererOutput& result, const Polygon& p, Color color) const {
         const auto& verticies = p.GetVerticies();
         const auto& z_buf = p.GetZBuffer();
         Line2 l1{verticies[0], verticies[2]};
@@ -127,7 +142,7 @@ private:
                 std::swap(y1, y2);
             }
             for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
-                UpdateResult(result, x, y, p);
+                UpdateResult(result, x, y, p, color);
             }
         }
         for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
@@ -137,13 +152,13 @@ private:
                 std::swap(y1, y2);
             }
             for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
-                UpdateResult(result, x, y, p);
+                UpdateResult(result, x, y, p, color);
             }
         }
         if (verticies[1].x == verticies[2].x) {
             for (SizeType y = std::max(0.0, verticies[1].y - 1);
                  y <= std::min(verticies[2].y, result.width - 1.0); ++y) {
-                UpdateResult(result, verticies[1].x, y, p);
+                UpdateResult(result, verticies[1].x, y, p, color);
             }
         }
     }
@@ -174,23 +189,30 @@ private:
         }
     }
 
-    void FindPolygons(ConstReference<EmptyNode> node, std::vector<Polygon>& poly,
-                      Matrix4 transform = Matrix4(1.0f)) const {
-        transform = node.GetTransform() * transform;
+    void FindKeyObjects(ConstReference<EmptyNode> node, std::vector<Polygon>& poly,
+                        std::vector<LightInfo>& lights, Matrix4 transform = Matrix4(1.0f)) const {
+        transform = transform * node.GetTransform();
         if (Is<Object3D>(node)) {
             auto mesh = As<Object3D>(node)->GetMesh();
             for (const Polygon& polygon : mesh) {
                 poly.push_back(polygon.ApplyTransform(transform));
             }
+        } else if (Is<LightSource>(node)) {
+            lights.push_back({.position = transform[3], .info = *As<LightSource>(node)});
         }
         for (SizeType i = 0; i < node.GetChildCount(); ++i) {
-            FindPolygons(node.GetChild(i), poly, transform);
+            FindKeyObjects(node.GetChild(i), poly, lights, transform);
         }
     }
 
-    void ViewProjection(std::vector<Polygon>& poly, const Scene& scene,
-                        ConstReference<Camera> camera) const {
-        ApplyTransform(poly, camera.GetGlobalReverseTransform());
+    void ViewProjection(std::vector<Polygon>& poly, std::vector<LightInfo>& lights,
+                        const Scene& scene, ConstReference<Camera> camera) const {
+        for (Polygon& polygon : poly) {
+            polygon.ApplyTransformInplace(camera.GetGlobalReverseTransform());
+        }
+        for (LightInfo& light : lights) {
+            light.position = PointApplyTransform(light.position, camera.GetReverseTransform());
+        }
     }
 
     void Filter(std::vector<Polygon>& poly, ConstReference<Camera> camera) const {
@@ -222,16 +244,28 @@ private:
         poly = new_poly;
     }
 
+    std::vector<Color> GetVisibleColors(const std::vector<Polygon>& poly,
+                                        const std::vector<LightInfo>& lights) const {
+        std::vector<Color> result;
+        for (const auto& p : poly) {
+            Color color = static_cast<Vector3>(p.GetColor()) * kAmbientLightEnergy;
+            for (const LightInfo& light : lights) {
+                Vector3 light_direction = Centroid(p.GetVerticies()) - light.position;
+                if (glm::dot(light_direction, Vector3{0, 0, 1}) >= 0) {
+                    Real energy = light.info.GetEnergy();
+                    color = static_cast<Vector3>(color) * (1 - energy) +
+                            static_cast<Vector3>(light.info.GetColor()) * energy;
+                }
+            }
+            result.push_back(color);
+        }
+        return result;
+    }
+
     void PerspectiveProjection(std::vector<Polygon>& poly, ConstReference<Camera> camera,
                                Real aspect) const {
         Matrix4 projection_matrix = GetProjectionMatrix(camera, aspect);
         ApplyProjection(poly, projection_matrix, camera->GetNear(), camera->GetFar());
-    }
-
-    void ApplyTransform(std::vector<Polygon>& poly, const Matrix4& transform) const {
-        for (Polygon& polygon : poly) {
-            polygon.ApplyTransformInplace(transform);
-        }
     }
 
     void ApplyProjection(std::vector<Polygon>& poly, const Matrix4& transform, Real near,

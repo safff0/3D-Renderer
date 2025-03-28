@@ -1,4 +1,5 @@
 #include "light.h"
+#include "alias.h"
 
 namespace engine {
 
@@ -7,10 +8,12 @@ LightSource::LightSource(Type energy, Color emission_color)
 }
 
 void LightSource::SetColor(Color new_color) {
+    assert(engine::colors::IsCorrect(new_color) && "Light: Invalid color value");
     color_ = new_color;
 }
 
 void LightSource::SetEnergy(Type new_energy) {
+    assert(new_energy <= 1 && new_energy >= 0 && "Light: Invalid energy value");
     energy_ = new_energy;
 }
 

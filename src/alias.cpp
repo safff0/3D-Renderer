@@ -25,12 +25,13 @@ char EncodeBase16Digit(Index value) {
     return '0' + value;
 }
 
-std::string Base10ToBase16(Index value) {
+std::string Base10ToBase16(Index value, Index length) {
     assert(value >= 0 && "Alias: tried converting unexpected negative value to HEX");
     std::string result;
-    while (value > 0) {
+    while (value > 0 || length > 0) {
         result += EncodeBase16Digit(value % kHexBase);
         value /= kHexBase;
+        --length;
     }
     std::reverse(result.begin(), result.end());
     return result;
@@ -60,7 +61,7 @@ std::string ToHex(Color color) {
     assert(IsCorrect(color) && "Alias: Incorrect Color");
     std::string result = "#";
     for (size_t c = 0; c < 3; ++c) {
-        result += Base10ToBase16(color[c]);
+        result += Base10ToBase16(color[c], 2);
     }
     return result;
 }

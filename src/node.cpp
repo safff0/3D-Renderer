@@ -108,6 +108,10 @@ void Node::SetPosition(Vector3 new_pos) {
     reverse_transform_ = glm::translate<Real>(Matrix4(1.0), -new_pos) * reverse_transform_;
 }
 
+Vector3 Node::GetPosition() const {
+    return GetGlobalTransform()[3];
+}
+
 void Node::SetRotationX(Real angle) {
     transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(1.0, 0.0, 0.0));
     reverse_transform_ =
@@ -127,10 +131,6 @@ void Node::SetRotationZ(Real angle) {
     reverse_transform_ =
         glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(0.0, 0.0, 1.0)) *
         reverse_transform_;
-}
-
-Vector3 Node::GetPosition() const {
-    return GetGlobalTransform()[3];
 }
 
 bool Node::HasParent(const Node& other_node) const {
