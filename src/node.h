@@ -2,6 +2,7 @@
 #include "alias.h"
 #include "camera.h"
 #include "geometry.h"
+#include "light.h"
 #include "object3d.h"
 
 #include <glm/vec3.hpp>
@@ -17,7 +18,7 @@ using EmptyNode = std::monostate;
 namespace engine::details {
 
 class Node {
-    using NodeDataType = std::variant<EmptyNode, Camera, Object3D>;
+    using NodeDataType = std::variant<EmptyNode, Camera, Object3D, LightSource>;
 
 public:
     using IndexType = Index;

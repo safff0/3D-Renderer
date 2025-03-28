@@ -136,6 +136,15 @@ Vector3 Polygon::GetNormal() const {
     return Plane3(*this).GetCoefficients();
 }
 
+void Polygon::SetColor(Color new_color) {
+    assert(colors::IsCorrect(new_color) && "Polygon: got unexpected color");
+    color_ = new_color;
+}
+
+Color Polygon::GetColor() const {
+    return color_;
+}
+
 Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly) {
     auto plane = Plane3{poly};
     if (std::abs(plane.GetCoefficients()[2]) < kEps) {

@@ -13,6 +13,8 @@ namespace app::donut {
 
 class AsciiRenderer {
 public:
+    using Index = size_t;
+
     void Draw(const engine::Scene& scene, engine::ConstReference<engine::Camera> camera,
               engine::Width w, engine::Height h) const;
 
@@ -21,7 +23,10 @@ private:
 
     void ResetScreen() const;
 
-    char GetShade(float z_value, float min_z, float max_z) const;
+    char GetShade(const engine::RendererOutput& img, Index i, Index j, float min_z,
+                  float max_z) const;
+
+    std::string GetColor(const engine::RendererOutput& img, Index i, Index j) const;
 
     void PrintOutput(const engine::RendererOutput& img) const;
 

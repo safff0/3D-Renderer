@@ -10,6 +10,8 @@ public:
 
     const std::vector<Polygon>& GetMesh() const;
 
+    void SetColor(Color new_color);
+
     static Object3D Cube(Type size = kDefaultObjectSize);
     static Object3D Sphere(Type radius = kDefaultObjectSize,
                            IndexType subdivide = kDefaultSubdivision);

@@ -22,9 +22,9 @@ public:
     Type GetFOV() const;
 
 private:
-    static constexpr Camera::Type kDefaultFar = 50.0f;
-    static constexpr Camera::Type kDefaultNear = 1.0f;
-    static constexpr Camera::Type kDefaultFOV = 50.0f;  // degrees
+    static constexpr Type kDefaultFar = 50.0f;
+    static constexpr Type kDefaultNear = 1.0f;
+    static constexpr Type kDefaultFOV = 50.0f;  // degrees
 
     Type far_ = kDefaultFar;
     Type near_ = kDefaultNear;

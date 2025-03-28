@@ -88,9 +88,15 @@ public:
 
     Vector3 GetNormal() const;
 
+    void SetColor(Color new_color);
+    Color GetColor() const;
+
 private:
+    static constexpr Color kDefaultColor = colors::kColorLightGray;
+
     Triangle3D data_;
     std::array<Real, kVerticiesCount> z_buffer_;
+    Color color_ = kDefaultColor;
 };
 
 Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly);

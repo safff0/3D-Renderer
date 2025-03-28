@@ -12,6 +12,7 @@ struct RendererOutput {
     Index width;
     Index height;
     std::vector<std::vector<Real>> z_buffer;
+    std::vector<std::vector<Color>> surface_color;
 };
 
 namespace details {

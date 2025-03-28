@@ -1,4 +1,5 @@
 #include "object3d.h"
+#include "alias.h"
 #include "geometry.h"
 
 #include <vector>
@@ -22,6 +23,12 @@ Vector3 GetToroidalCoordinates(Object3D::Type radius, Object3D::Type thickness, 
 
 const std::vector<Polygon>& Object3D::GetMesh() const {
     return mesh_;
+}
+
+void Object3D::SetColor(Color new_color) {
+    for (auto& p : mesh_) {
+        p.SetColor(new_color);
+    }
 }
 
 // Не придумал, как нормально сделать, учитывая, что важен порядок перечисления вершин (для

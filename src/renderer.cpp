@@ -26,6 +26,7 @@ RendererOutput InitOutput(Index width, Index height) {
     result.width = width;
     result.height = height;
     result.z_buffer.assign(height, std::vector<Real>(width, 1));
+    result.surface_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
     return result;
 }
 
@@ -106,6 +107,13 @@ private:
         }
     }
 
+    void UpdateResult(RendererOutput& result, Index x, Index y, const Polygon& p) const {
+        if (GetZProjectionCoordinate({x, y}, p) < result.z_buffer[x][y]) {
+            result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
+            result.surface_color[x][y] = p.GetColor();
+        }
+    }
+
     void DrawPolygon(RendererOutput& result, const Polygon& p) const {
         const auto& verticies = p.GetVerticies();
         const auto& z_buf = p.GetZBuffer();
@@ -119,9 +127,7 @@ private:
                 std::swap(y1, y2);
             }
             for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
-                if (z_buf[0] < result.z_buffer[x][y]) {
-                    result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
-                }
+                UpdateResult(result, x, y, p);
             }
         }
         for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
@@ -131,18 +137,13 @@ private:
                 std::swap(y1, y2);
             }
             for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
-                if (z_buf[0] < result.z_buffer[x][y]) {
-                    result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
-                }
+                UpdateResult(result, x, y, p);
             }
         }
         if (verticies[1].x == verticies[2].x) {
             for (SizeType y = std::max(0.0, verticies[1].y - 1);
                  y <= std::min(verticies[2].y, result.width - 1.0); ++y) {
-                if (z_buf[0] < result.z_buffer[verticies[1].x][y]) {
-                    result.z_buffer[verticies[1].x][y] =
-                        GetZProjectionCoordinate({verticies[1].x, y}, p);
-                }
+                UpdateResult(result, verticies[1].x, y, p);
             }
         }
     }
