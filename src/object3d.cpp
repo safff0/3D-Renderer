@@ -1,5 +1,6 @@
 #include "object3d.h"
 #include "alias.h"
+#include "files.h"
 #include "geometry.h"
 
 #include <vector>
@@ -101,6 +102,24 @@ Object3D Object3D::Cone(Type radius, Type height, IndexType subdiv) {
         Type z2 = radius * glm::sin(phi + 2 * pi / subdiv);
         result.AddFace({{x1, 0, z1}, {0, height, 0}, {x2, 0, z2}});
         result.AddFace({{x1, 0, z1}, {0, 0, 0}, {x2, 0, z2}});
+    }
+    return result;
+}
+
+Object3D Object3D::FromFile(const std::string& path) {
+    Object3D result;
+    OBJParser parser{path};
+    Real max_dist = 0;
+    for (const auto& face : parser.GetFaces()) {
+        for (Vector3 point : face) {
+            max_dist = std::max(max_dist, glm::length(point));
+        }
+    }
+    for (auto face : parser.GetFaces()) {
+        for (Vector3& point : face) {
+            point *= 2 * kDefaultObjectSize / max_dist;
+        }
+        result.AddFace(face);
     }
     return result;
 }

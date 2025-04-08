@@ -3,6 +3,7 @@
 
 #include <glm/vec3.hpp>
 
+#include <algorithm>
 #include <array>
 #include <initializer_list>
 #include <stdexcept>
@@ -99,8 +100,6 @@ void Polygon::ApplyProjectionInplace(const Matrix4& transform, Real near, Real f
     for (IndexType i = 0; i < kVerticiesCount; ++i) {
         Vector4 tmp = PointApplyTransform(data_[i], transform);
         data_[i] = Vector3(tmp.x, tmp.y, tmp.z) / tmp.w;
-        z_buffer_[i] = GetZBufferCoordinate(tmp.z, near, far);
-        data_[i].z = z_buffer_[i];
     }
 }
 
@@ -120,20 +119,16 @@ const Triangle3D& Polygon::GetVerticies() const {
     return data_;
 }
 
-const std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() const {
-    return z_buffer_;
-}
-
 Triangle3D& Polygon::GetVerticies() {
     return data_;
 }
 
-std::array<Real, Polygon::kVerticiesCount>& Polygon::GetZBuffer() {
-    return z_buffer_;
-}
-
 Vector3 Polygon::GetNormal() const {
     return Plane3(*this).GetCoefficients();
+}
+
+void Polygon::FlipNormal() {
+    std::reverse(data_.begin(), data_.end());
 }
 
 void Polygon::SetColor(Color new_color) {
@@ -143,6 +138,10 @@ void Polygon::SetColor(Color new_color) {
 
 Color Polygon::GetColor() const {
     return color_;
+}
+
+Real CosineBetweenVectors(Vector3 v, Vector3 u) {
+    return glm::dot(v, u) / (glm::length(v) * glm::length(u));
 }
 
 Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly) {

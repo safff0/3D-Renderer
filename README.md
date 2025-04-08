@@ -2,7 +2,11 @@
 
 # Dependancies
 
+#### Required:
 - [GLM](https://github.com/g-truc/glm) (Used for matrix calculations)
+
+#### Optional:
+- [SFML](https://www.sfml-dev.org) (Used for model-viewer demo application)
 
 # Features
 

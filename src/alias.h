@@ -8,7 +8,8 @@
 namespace engine {
 
 using Real = double;
-using Index = int32_t;
+using Index = uint32_t;
+using Signed = int32_t;
 
 const static Real kInfinity = 1e9;
 const static Real kEps = 1e-4;

@@ -21,6 +21,7 @@ public:
                              IndexType subdivide = kDefaultSubdivision);
     static Object3D Cone(Type radius = kDefaultObjectSize, Type height = kDefaultObjectSize,
                          IndexType subdivide = kDefaultSubdivision);
+    static Object3D FromFile(const std::string& path);
 
 private:
     static constexpr Type kDefaultObjectSize = 1;

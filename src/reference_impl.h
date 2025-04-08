@@ -30,6 +30,8 @@ class NodeController : private NodeTypes<IsConst> {
 public:
     using typename NodeTypes<IsConst>::NodeType;
 
+    NodeController() = default;
+
     explicit NodeController(NodeType* node) : node_{node} {
         assert(node != nullptr && "Reference: Tried to refer to nullptr");
     }
@@ -59,7 +61,7 @@ class ReferenceImpl<EmptyNode, IsConst> : protected NodeController<IsConst> {
 public:
     using typename Base::NodeType;
 
-    ReferenceImpl() = delete;
+    ReferenceImpl() = default;
 
     explicit ReferenceImpl(NodeType* node) : Base(node) {
     }
@@ -133,6 +135,11 @@ public:
     }
 
     template <typename = std::enable_if<!IsConst>>
+    void SetRotationOnAxis(Real angle, Vector3 axis) {
+        node_->SetRotationOnAxis(angle, axis);
+    }
+
+    template <typename = std::enable_if<!IsConst>>
     void SetRotationX(Real angle) {
         node_->SetRotationX(angle);
     }
@@ -190,7 +197,7 @@ public:
     using typename ReferenceTypes<DataT, IsConst>::DataType;
     using typename Base::NodeType;
 
-    ReferenceImpl() = delete;
+    ReferenceImpl() = default;
 
     ReferenceImpl(NodeType* node) : ReferenceImpl<EmptyNode, IsConst>(node) {
         assert(Is<DataT>(*node_) && "Reference: Data and Reference types do not match");

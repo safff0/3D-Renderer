@@ -6,5 +6,6 @@ add_library(3d_renderer STATIC
     object3d.cpp
     camera.cpp
     light.cpp
+    files.cpp
     renderer.cpp
 )

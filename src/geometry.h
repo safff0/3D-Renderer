@@ -82,11 +82,10 @@ public:
     void ApplyTransformInplace(const Matrix4& transform);
 
     const Triangle3D& GetVerticies() const;
-    const std::array<Real, kVerticiesCount>& GetZBuffer() const;
     Triangle3D& GetVerticies();
-    std::array<Real, kVerticiesCount>& GetZBuffer();
 
     Vector3 GetNormal() const;
+    void FlipNormal();
 
     void SetColor(Color new_color);
     Color GetColor() const;
@@ -95,9 +94,10 @@ private:
     static constexpr Color kDefaultColor = colors::kColorLightGray;
 
     Triangle3D data_;
-    std::array<Real, kVerticiesCount> z_buffer_;
     Color color_ = kDefaultColor;
 };
+
+Real CosineBetweenVectors(Vector3 v, Vector3 u);
 
 Real GetZProjectionCoordinate(Vector2 point, const Polygon& poly);
 Vector3 Centroid(const Triangle3D& poly);

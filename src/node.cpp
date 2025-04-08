@@ -1,10 +1,12 @@
 #include "node.h"
+#include "alias.h"
+#include "geometry.h"
+
+#include <glm/ext/matrix_transform.hpp>
 
 #include <algorithm>
 #include <cassert>
-#include <glm/ext/matrix_transform.hpp>
 #include <stdexcept>
-#include "alias.h"
 
 namespace engine::details {
 
@@ -97,40 +99,41 @@ Matrix4 Node::GetGlobalReverseTransform() const {
     Matrix4 result(1.0);
     const Node* temp = this;
     while (temp->parent_ != nullptr) {
-        result = temp->GetReverseTransform() * result;
+        result = result * temp->GetReverseTransform();
         temp = temp->GetParent();
     }
     return result;
 }
 
 void Node::SetPosition(Vector3 new_pos) {
-    transform_ = glm::translate<Real>(transform_, new_pos);
-    reverse_transform_ = glm::translate<Real>(Matrix4(1.0), -new_pos) * reverse_transform_;
+    new_pos = PointApplyTransform(new_pos, transform_);
+    new_pos -= transform_ * Vector4(0, 0, 0, 1);
+    transform_ = glm::translate<Real>(Matrix4(1.0), new_pos) * transform_;
+    reverse_transform_ = reverse_transform_ * glm::translate<Real>(Matrix4(1.0), -new_pos);
 }
 
 Vector3 Node::GetPosition() const {
-    return GetGlobalTransform()[3];
+    return GetGlobalTransform() * Vector4(0, 0, 0, 1);
+}
+
+void Node::SetRotationOnAxis(Real angle, Vector3 axis) {
+    axis = PointApplyTransform(axis, transform_);
+    axis -= transform_ * Vector4(0, 0, 0, 1);
+    transform_ = glm::rotate<Real>(Matrix4(1), glm::radians(angle), axis) * transform_;
+    reverse_transform_ =
+        reverse_transform_ * glm::rotate<Real>(Matrix4(1.0), -glm::radians(angle), axis);
 }
 
 void Node::SetRotationX(Real angle) {
-    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(1.0, 0.0, 0.0));
-    reverse_transform_ =
-        glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(1.0, 0.0, 0.0)) *
-        reverse_transform_;
+    SetRotationOnAxis(angle, {1, 0, 0});
 }
 
 void Node::SetRotationY(Real angle) {
-    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0, 1.0, 0.0));
-    reverse_transform_ =
-        glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(0.0, 1.0, 0.0)) *
-        reverse_transform_;
+    SetRotationOnAxis(angle, {0, 1, 0});
 }
 
 void Node::SetRotationZ(Real angle) {
-    transform_ = glm::rotate<Real>(transform_, glm::radians(angle), Vector3(0.0, 0.0, 1.0));
-    reverse_transform_ =
-        glm::rotate<Real>(Matrix4(1.0), glm::radians(-angle), Vector3(0.0, 0.0, 1.0)) *
-        reverse_transform_;
+    SetRotationOnAxis(angle, {0, 0, 1});
 }
 
 bool Node::HasParent(const Node& other_node) const {

@@ -13,7 +13,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <iostream>
 #include <vector>
 
 namespace engine {
@@ -52,9 +51,9 @@ struct ViewFrustum {
 };
 
 bool PointInFrustum(Vector3 p, const ViewFrustum& vf) {
-    return vf.bottom.EquationValue(p) < kEps && vf.top.EquationValue(p) < kEps &&
-           vf.left.EquationValue(p) < kEps && vf.right.EquationValue(p) < kEps &&
-           vf.near.EquationValue(p) < kEps;
+    return vf.bottom.EquationValue(p) > kEps && vf.top.EquationValue(p) > kEps &&
+           vf.left.EquationValue(p) > kEps && vf.right.EquationValue(p) > kEps &&
+           vf.near.EquationValue(p) > kEps;
 }
 
 bool PolygonInFrustum(const Polygon& poly, const ViewFrustum& vf) {
@@ -131,7 +130,6 @@ private:
 
     void DrawPolygon(RendererOutput& result, const Polygon& p, Color color) const {
         const auto& verticies = p.GetVerticies();
-        const auto& z_buf = p.GetZBuffer();
         Line2 l1{verticies[0], verticies[2]};
         Line2 l2{verticies[0], verticies[1]};
         Line2 l3{verticies[1], verticies[2]};
@@ -141,7 +139,7 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
+            for (SizeType y = std::max(0u, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
@@ -151,7 +149,7 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
+            for (SizeType y = std::max(0u, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
@@ -166,8 +164,8 @@ private:
     void ToScreenSpace(Polygon& p, Width width, Height height, Real stretch_aspect) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
-            Real new_x = (1.0f + verticies[i].y) / 2.0f * height;
-            Real new_y = (1.0f - verticies[i].x) / 2.0f * width;
+            Real new_x = (1.0f - verticies[i].y) / 2.0f * height;
+            Real new_y = (1.0f + verticies[i].x) / 2.0f * width;
             verticies[i] = Vector3{std::round(new_x), std::round(new_y), verticies[i].z};
             verticies[i].x = std::max(0.0, std::min(verticies[i].x, height - 1.0));
             verticies[i].y = std::max(0.0, std::min(verticies[i].y, width - 1.0));
@@ -176,22 +174,19 @@ private:
 
     void Reorder(Polygon& p) const {
         std::array<Vector3, Polygon::kVerticiesCount>& verticies = p.GetVerticies();
-        std::array<Real, Polygon::kVerticiesCount>& z_buf = p.GetZBuffer();
         for (SizeType i = 0; i < Polygon::kVerticiesCount; ++i) {
             if (verticies[i].x < verticies[0].x) {
                 std::swap(verticies[i], verticies[0]);
-                std::swap(z_buf[i], z_buf[0]);
             }
         }
         if (verticies[1].x > verticies[2].x) {
             std::swap(verticies[1], verticies[2]);
-            std::swap(z_buf[1], z_buf[2]);
         }
     }
 
     void FindKeyObjects(ConstReference<EmptyNode> node, std::vector<Polygon>& poly,
                         std::vector<LightInfo>& lights, Matrix4 transform = Matrix4(1.0f)) const {
-        transform = transform * node.GetTransform();
+        transform = node.GetTransform() * transform;
         if (Is<Object3D>(node)) {
             auto mesh = As<Object3D>(node)->GetMesh();
             for (const Polygon& polygon : mesh) {
@@ -218,7 +213,7 @@ private:
     void Filter(std::vector<Polygon>& poly, ConstReference<Camera> camera) const {
         std::vector<Polygon> new_poly;
         for (auto& p : poly) {
-            if (glm::dot(p.GetNormal(), Vector3(0, 0, 1)) >= 0) {
+            if (glm::dot(p.GetNormal(), Vector3(0, 0, -1)) >= 0) {
                 new_poly.push_back(p);
             }
         }
@@ -236,8 +231,7 @@ private:
         for (const auto& p : poly) {
             if (PolygonInFrustum(p, vf)) {
                 new_poly.push_back(p);
-            } else if (!PolygonOutsideFrustum(p, vf)) {
-                // TODO: For better clipping intersect polygon and frustum
+            } else if (!PolygonInFrustum(p, vf)) {
                 new_poly.push_back(p);
             }
         }
@@ -251,8 +245,9 @@ private:
             Color color = static_cast<Vector3>(p.GetColor()) * kAmbientLightEnergy;
             for (const LightInfo& light : lights) {
                 Vector3 light_direction = Centroid(p.GetVerticies()) - light.position;
-                if (glm::dot(light_direction, Vector3{0, 0, 1}) >= 0) {
-                    Real energy = light.info.GetEnergy();
+                if (glm::dot(light_direction, p.GetNormal()) > -kEps) {
+                    Real energy = light.info.GetEnergy() *
+                                  CosineBetweenVectors(light_direction, p.GetNormal());
                     color = static_cast<Vector3>(color) * (1 - energy) +
                             static_cast<Vector3>(light.info.GetColor()) * energy;
                 }

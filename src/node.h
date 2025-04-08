@@ -65,6 +65,7 @@ public:
     void SetPosition(Vector3 new_pos);
     Vector3 GetPosition() const;
 
+    void SetRotationOnAxis(Real angle, Vector3 axis);
     void SetRotationX(Real angle);
     void SetRotationY(Real angle);
     void SetRotationZ(Real angle);

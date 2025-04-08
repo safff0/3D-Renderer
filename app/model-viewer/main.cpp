@@ -3,8 +3,8 @@
 
 int main(int argc, char** argv) {
     try {
-        app::donut::Application app;
-        app.Run();
+        app::mv::Application app;
+        app.Run(argv[1]);
     } catch (...) {
         app::except::React();
     }
