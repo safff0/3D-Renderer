@@ -54,8 +54,7 @@ void Application::BuildScene(const std::string& model_path) {
     auto root = scene_.GetRoot();
     root.NewChild(engine::Object3D::FromFile(model_path));
     camera_pivot_ = root.NewChild(engine::EmptyNode{});
-    auto ambient_light =
-        camera_pivot_.NewChild(engine::LightSource{0.5, engine::colors::kColorPink});
+    auto ambient_light = camera_pivot_.NewChild(engine::LightSource{0.5});
     ambient_light.SetPosition(kAmbientLightPosition);
     camera_ = camera_pivot_.NewChild(engine::Camera{});
     camera_.SetPosition(kCameraShift);

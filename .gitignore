@@ -33,6 +33,7 @@
 
 # VS Code clangd cache
 .cache
+.DS_Store
 
 # Build directory
 build
