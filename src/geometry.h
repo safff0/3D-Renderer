@@ -34,6 +34,9 @@ public:
     Line3() = delete;
     explicit Line3(Vector3 from, Vector3 to);
 
+    Vector3 GetOrigin() const;
+    Vector3 GetDirection() const;
+
 private:
     Vector3 point_;
     Vector3 direction_;
@@ -107,8 +110,6 @@ Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform);
 
 bool PointInTriangle2D(Vector2 point, const Triangle2D& poly);
 
-bool IsDegenerate(const Triangle2D& poly);
-
-Line3 IntersectPlanes(Plane3 p1, Plane3 p2);
+Vector3 Intersect(Plane3 plane, Line3 line);
 
 }  // namespace engine

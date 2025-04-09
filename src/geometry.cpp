@@ -39,6 +39,14 @@ Line2::Type Line2::EquationValue(Vector2 point) const {
 Line3::Line3(Vector3 from, Vector3 to) : point_{from}, direction_{to - from} {
 }
 
+Vector3 Line3::GetOrigin() const {
+    return point_;
+}
+
+Vector3 Line3::GetDirection() const {
+    return direction_;
+}
+
 Plane3::Plane3(Vector3 p1, Vector3 p2, Vector3 p3)
     : a_{(p2.y - p1.y) * (p3.z - p1.z) - (p2.z - p1.z) * (p3.y - p1.y)},
       b_{(p2.z - p1.z) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.z - p1.z)},
@@ -172,20 +180,10 @@ bool PointInTriangle2D(Vector2 point, const Triangle2D& poly) {
     return true;
 }
 
-bool IsDegenerate(const Triangle2D& poly) {
-    for (size_t d = 0; d < 2; ++d) {
-        Real max_c = std::max({poly[0][d], poly[1][d], poly[2][d]});
-        Real min_c = std::min({poly[0][d], poly[1][d], poly[2][d]});
-        if (max_c - min_c < 0.01) {
-            return true;
-        }
-    }
-    return false;
-}
-
-Line3 IntersectPlanes(Plane3 p1, Plane3 p2) {
-    // TODO: for better clipping process
-    throw std::runtime_error{"Not implemented"};
+Vector3 Intersect(Plane3 plane, Line3 line) {
+    Real t = -plane.EquationValue(line.GetOrigin()) /
+             (plane.EquationValue(line.GetDirection()) - plane.GetCoefficients()[3]);
+    return line.GetOrigin() + t * line.GetDirection();
 }
 
 }  // namespace engine

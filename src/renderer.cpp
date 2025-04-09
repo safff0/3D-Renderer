@@ -35,8 +35,8 @@ RendererOutput InitOutput(Index width, Index height) {
 
 struct ViewFrustum {
     explicit ViewFrustum(const Matrix4& pm)
-        : left{pm[0][3] + pm[0][0], pm[1][3] + pm[1][0], pm[2][3] + pm[3][0], pm[3][3] + pm[3][0]},
-          right{pm[0][3] - pm[0][0], pm[1][3] - pm[1][0], pm[2][3] - pm[3][0], pm[3][3] - pm[3][0]},
+        : left{pm[0][3] + pm[0][0], pm[1][3] + pm[1][0], pm[2][3] + pm[2][0], pm[3][3] + pm[3][0]},
+          right{pm[0][3] - pm[0][0], pm[1][3] - pm[1][0], pm[2][3] - pm[2][0], pm[3][3] - pm[3][0]},
           bottom{pm[0][3] + pm[0][1], pm[1][3] + pm[1][1], pm[2][3] + pm[2][1],
                  pm[3][3] + pm[3][1]},
           top{pm[0][3] - pm[0][1], pm[1][3] - pm[1][1], pm[2][3] - pm[2][1], pm[3][3] - pm[3][1]},
@@ -50,10 +50,14 @@ struct ViewFrustum {
     Plane3 near;
 };
 
+std::vector<Plane3> ClippingPlanes(const ViewFrustum& vf) {
+    return {vf.left, vf.top, vf.right, vf.bottom};
+}
+
 bool PointInFrustum(Vector3 p, const ViewFrustum& vf) {
-    return vf.bottom.EquationValue(p) > kEps && vf.top.EquationValue(p) > kEps &&
-           vf.left.EquationValue(p) > kEps && vf.right.EquationValue(p) > kEps &&
-           vf.near.EquationValue(p) > kEps;
+    return vf.bottom.EquationValue(p) > -kEps && vf.top.EquationValue(p) > -kEps &&
+           vf.left.EquationValue(p) > -kEps && vf.right.EquationValue(p) > -kEps &&
+           vf.near.EquationValue(p) > -kEps;
 }
 
 bool PolygonInFrustum(const Polygon& poly, const ViewFrustum& vf) {
@@ -134,22 +138,24 @@ private:
         Line2 l2{verticies[0], verticies[1]};
         Line2 l3{verticies[1], verticies[2]};
         for (SizeType x = verticies[0].x; x < verticies[1].x; ++x) {
-            SizeType y1 = l1.GetY(x);
-            SizeType y2 = l2.GetY(x);
+            Real y1 = l1.GetY(x);
+            Real y2 = l2.GetY(x);
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0u, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
+            for (SizeType y = std::max(0.0, y1 - 1);
+                 y < std::min(y2 + 1, static_cast<Real>(result.width)); ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
         for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
-            SizeType y1 = l1.GetY(x);
-            SizeType y2 = l3.GetY(x);
+            Real y1 = l1.GetY(x);
+            Real y2 = l3.GetY(x);
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0u, y1 - 1); y < std::min(y2 + 1, result.width); ++y) {
+            for (SizeType y = std::max(0.0, y1 - 1);
+                 y < std::min(y2 + 1, static_cast<Real>(result.width)); ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
@@ -213,7 +219,7 @@ private:
     void Filter(std::vector<Polygon>& poly, ConstReference<Camera> camera) const {
         std::vector<Polygon> new_poly;
         for (auto& p : poly) {
-            if (glm::dot(p.GetNormal(), Vector3(0, 0, -1)) >= 0) {
+            if (glm::dot(p.GetNormal(), Centroid(p.GetVerticies())) > -kEps) {
                 new_poly.push_back(p);
             }
         }
@@ -231,8 +237,52 @@ private:
         for (const auto& p : poly) {
             if (PolygonInFrustum(p, vf)) {
                 new_poly.push_back(p);
-            } else if (!PolygonInFrustum(p, vf)) {
-                new_poly.push_back(p);
+            } else if (!PolygonOutsideFrustum(p, vf)) {
+                std::vector<Polygon> buffer = {p};
+                for (Plane3 plane : ClippingPlanes(vf)) {
+                    std::vector<Polygon> new_buffer;
+                    for (const auto& pb : buffer) {
+                        Index outside = 0;
+                        Index id_outside = 0;
+                        Index id_inside = 0;
+                        std::vector<Index> ids;
+                        for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
+                            ids.push_back(i);
+                            if (plane.EquationValue(pb.GetVerticies()[i]) > -kEps) {
+                                id_inside = i;
+                            } else {
+                                ++outside;
+                                id_outside = i;
+                            }
+                        }
+                        if (outside == 1) {
+                            ids.erase(std::find(ids.begin(), ids.end(), id_outside));
+                            auto p0 = Intersect(plane, Line3{pb.GetVerticies()[ids[0]],
+                                                             pb.GetVerticies()[id_outside]});
+                            auto p1 = Intersect(plane, Line3{pb.GetVerticies()[ids[1]],
+                                                             pb.GetVerticies()[id_outside]});
+                            new_buffer.push_back(
+                                {p0, pb.GetVerticies()[ids[1]], pb.GetVerticies()[ids[0]]});
+                            new_buffer.push_back({p0, p1, pb.GetVerticies()[ids[1]]});
+                        } else if (outside == 2) {
+                            ids.erase(std::find(ids.begin(), ids.end(), id_inside));
+                            auto p0 = Intersect(plane, Line3{pb.GetVerticies()[ids[0]],
+                                                             pb.GetVerticies()[id_inside]});
+                            auto p1 = Intersect(plane, Line3{pb.GetVerticies()[ids[1]],
+                                                             pb.GetVerticies()[id_inside]});
+                            new_buffer.push_back({p0, p1, pb.GetVerticies()[id_inside]});
+                        } else {
+                            new_buffer.push_back(pb);
+                        }
+                    }
+                    buffer = new_buffer;
+                }
+                for (auto& pb : buffer) {
+                    if (glm::dot(pb.GetNormal(), p.GetNormal()) < 0) {
+                        pb.FlipNormal();
+                    }
+                }
+                new_poly.insert(new_poly.end(), buffer.begin(), buffer.end());
             }
         }
         poly = new_poly;
