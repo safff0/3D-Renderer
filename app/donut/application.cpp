@@ -65,7 +65,7 @@ void AsciiRenderer::PrintOutput(const RendererOutput& img) const {
 
 void Application::Run() {
     auto root = scene_.GetRoot();
-    auto camera = root.NewChild(Camera{Camera::Far{7}, Camera::Near{2}, Camera::FOV{50}});
+    auto camera = root.NewChild(Camera{Camera::Far{7}, Camera::Near{1.5}, Camera::FOV{50}});
     camera.SetPosition({0, 0, 4});
     auto donut = root.NewChild(Object3D::Torus(1, 0.5, 50));
 
