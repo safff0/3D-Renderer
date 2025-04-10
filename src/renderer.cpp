@@ -14,7 +14,6 @@
 
 #include <cassert>
 #include <cmath>
-#include <iostream>
 #include <vector>
 
 namespace engine {
@@ -35,6 +34,7 @@ RendererOutput InitOutput(Index width, Index height) {
     result.z_buffer.assign(height, std::vector<Real>(width, 1));
     result.surface_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
     result.visible_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
+    result.normal_.assign(height, std::vector<Vector3>(width, {0, 0, -1}));
     return result;
 }
 
@@ -149,6 +149,7 @@ private:
             result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
             result.surface_color[x][y] = p.GetColor();
             result.visible_color[x][y] = CalculateColor(x, y, p, color);
+            result.normal_[x][y] = -1.0 * p.GetNormal();
         }
     }
 
@@ -164,8 +165,8 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0.0, y1);
-                 y < std::min(y2 + 1, static_cast<Real>(result.width)); ++y) {
+            for (SizeType y = std::max(0.0, y1); y < std::min(y2, static_cast<Real>(result.width));
+                 ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
@@ -175,14 +176,14 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0.0, y1);
-                 y < std::min(y2 + 1, static_cast<Real>(result.width)); ++y) {
+            for (SizeType y = std::max(0.0, y1); y < std::min(y2, static_cast<Real>(result.width));
+                 ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
         if (verticies[1].x == verticies[2].x) {
             for (SizeType y = std::max(0.0, verticies[1].y);
-                 y <= std::min(verticies[2].y, result.width - 1.0); ++y) {
+                 y < std::min(verticies[2].y, static_cast<Real>(result.width)); ++y) {
                 UpdateResult(result, verticies[1].x, y, p, color);
             }
         }
@@ -335,8 +336,7 @@ private:
                                   light.info.GetEnergy();
                 }
                 for (Index j = 0; j < 3; ++j) {
-                    assert(arr[i][j] > 0 && "Renderer: Negative light value");
-                    arr[i][j] = std::min(arr[i][j], 255u);
+                    arr[i][j] = std::max(0u, std::min(arr[i][j], 255u));
                 }
             }
             result.push_back(arr);
