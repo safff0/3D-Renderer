@@ -8,18 +8,20 @@
 
 namespace engine {
 
+struct RendererOutput {
+    Index width;
+    Index height;
+    std::vector<std::vector<Real>> z_buffer;
+    std::vector<std::vector<Color>> surface_color;
+    std::vector<std::vector<Color>> visible_color;
+    std::vector<std::vector<Vector3>> normal_;
+};
+
 namespace details {
 class RendererImpl;
 }
 
 class Scene;
-
-struct RendererOutput {
-    std::vector<std::vector<char>> data;
-    std::vector<std::vector<Real>> z_buffer;
-};
-
-void Print(const RendererOutput& output);
 
 class Renderer {
     using RendererImpl = details::RendererImpl;
@@ -35,7 +37,7 @@ public:
     Renderer& operator=(Renderer&& other) noexcept;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                          Height height) const;
+                          Height height, Real stretch_aspect = 1.0) const;
 
     void Swap(Renderer& other);
 

@@ -6,7 +6,7 @@ namespace engine {
 
 namespace {}  // namespace
 
-Camera::Camera(Type far, Type near, Type fov) : far_{far}, near_{near}, fov_{fov} {
+Camera::Camera(Far far, Near near, FOV fov) : far_{far}, near_{near}, fov_{fov} {
 }
 
 void Camera::SetFar(Type value) {

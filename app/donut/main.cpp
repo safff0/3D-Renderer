@@ -1,9 +1,9 @@
 #include "application.h"
 #include "except.h"
 
-int main() {
+int main(int argc, char** argv) {
     try {
-        app::Application app;
+        app::donut::Application app;
         app.Run();
     } catch (...) {
         app::except::React();

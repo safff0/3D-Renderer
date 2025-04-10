@@ -1,12 +1,17 @@
 #include "node.h"
+#include "alias.h"
+#include "geometry.h"
+
+#include <glm/ext/matrix_transform.hpp>
 
 #include <algorithm>
 #include <cassert>
+#include <stdexcept>
 
 namespace engine::details {
 
 Node::Node(const Node& other)
-    : data_{other.data_}, parent_{other.parent_}, position_{other.position_} {
+    : data_{other.data_}, parent_{other.parent_}, transform_{other.transform_} {
     // Copy subtree
     for (const std::unique_ptr<Node>& subtree : other.children_) {
         children_.push_back(std::make_unique<Node>(*subtree));
@@ -23,7 +28,7 @@ void Node::Swap(Node& other) {
     children_.swap(other.children_);
     std::swap(parent_, other.parent_);
     std::swap(data_, other.data_);
-    std::swap(position_, other.position_);
+    std::swap(transform_, other.transform_);
 }
 
 Node* Node::GetParent() {
@@ -72,12 +77,63 @@ void Node::Unlink() noexcept {
     }
 }
 
+const Matrix4& Node::GetTransform() const {
+    return transform_;
+}
+
+const Matrix4& Node::GetReverseTransform() const {
+    return reverse_transform_;
+}
+
+Matrix4 Node::GetGlobalTransform() const {
+    Matrix4 result(1.0);
+    const Node* temp = this;
+    while (temp->parent_ != nullptr) {
+        result = temp->GetTransform() * result;
+        temp = temp->GetParent();
+    }
+    return result;
+}
+
+Matrix4 Node::GetGlobalReverseTransform() const {
+    Matrix4 result(1.0);
+    const Node* temp = this;
+    while (temp->parent_ != nullptr) {
+        result = result * temp->GetReverseTransform();
+        temp = temp->GetParent();
+    }
+    return result;
+}
+
 void Node::SetPosition(Vector3 new_pos) {
-    position_ = new_pos;
+    new_pos = PointApplyTransform(new_pos, transform_);
+    new_pos -= transform_ * Vector4(0, 0, 0, 1);
+    transform_ = glm::translate<Real>(Matrix4(1.0), new_pos) * transform_;
+    reverse_transform_ = reverse_transform_ * glm::translate<Real>(Matrix4(1.0), -new_pos);
 }
 
 Vector3 Node::GetPosition() const {
-    return position_;
+    return GetGlobalTransform() * Vector4(0, 0, 0, 1);
+}
+
+void Node::SetRotationOnAxis(Real angle, Vector3 axis) {
+    axis = PointApplyTransform(axis, transform_);
+    axis -= transform_ * Vector4(0, 0, 0, 1);
+    transform_ = glm::rotate<Real>(Matrix4(1), glm::radians(angle), axis) * transform_;
+    reverse_transform_ =
+        reverse_transform_ * glm::rotate<Real>(Matrix4(1.0), -glm::radians(angle), axis);
+}
+
+void Node::SetRotationX(Real angle) {
+    SetRotationOnAxis(angle, {1, 0, 0});
+}
+
+void Node::SetRotationY(Real angle) {
+    SetRotationOnAxis(angle, {0, 1, 0});
+}
+
+void Node::SetRotationZ(Real angle) {
+    SetRotationOnAxis(angle, {0, 0, 1});
 }
 
 bool Node::HasParent(const Node& other_node) const {

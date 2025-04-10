@@ -1,6 +1,8 @@
 #pragma once
+#include "alias.h"
 #include "camera.h"
 #include "geometry.h"
+#include "light.h"
 #include "object3d.h"
 
 #include <glm/vec3.hpp>
@@ -16,7 +18,7 @@ using EmptyNode = std::monostate;
 namespace engine::details {
 
 class Node {
-    using NodeDataType = std::variant<EmptyNode, Camera, Object3D>;
+    using NodeDataType = std::variant<EmptyNode, Camera, Object3D, LightSource>;
 
 public:
     using IndexType = Index;
@@ -51,11 +53,22 @@ public:
     template <typename T>
     Node* NewChild(T&& data) noexcept {
         children_.push_back(std::make_unique<Node>(std::forward<T>(data)));
+        children_.back()->parent_ = this;
         return children_.back().get();
     }
 
+    const Matrix4& GetTransform() const;
+    const Matrix4& GetReverseTransform() const;
+    Matrix4 GetGlobalTransform() const;
+    Matrix4 GetGlobalReverseTransform() const;
+
     void SetPosition(Vector3 new_pos);
     Vector3 GetPosition() const;
+
+    void SetRotationOnAxis(Real angle, Vector3 axis);
+    void SetRotationX(Real angle);
+    void SetRotationY(Real angle);
+    void SetRotationZ(Real angle);
 
     template <typename T>
     friend bool Is(const Node& node) {
@@ -73,7 +86,7 @@ public:
     }
 
 private:
-    static constexpr Vector3 kDefaultPosition = {0, 0, 0};
+    static constexpr Matrix4 kDefaultTransform = Matrix4(1.0f);
     // Invariants
     bool HasParent(const Node& other_node) const;
 
@@ -81,8 +94,8 @@ private:
     Node* parent_ = nullptr;
     std::vector<std::unique_ptr<Node>> children_ = {};
 
-    // TODO: implement Transforms logic
-    Vector3 position_ = Node::kDefaultPosition;
+    Matrix4 transform_ = kDefaultTransform;
+    Matrix4 reverse_transform_ = kDefaultTransform;
 };
 
 }  // namespace engine::details
