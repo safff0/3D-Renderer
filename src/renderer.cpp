@@ -9,10 +9,12 @@
 #include "scene.h"
 
 #include <glm/ext/matrix_clip_space.hpp>
+#include <glm/geometric.hpp>
 #include <glm/glm.hpp>
 
 #include <cassert>
 #include <cmath>
+#include <iostream>
 #include <vector>
 
 namespace engine {
@@ -22,6 +24,9 @@ namespace details {
 namespace {
 
 const static Real kAmbientLightEnergy = 0.2;
+const static Real kD = 1;
+const static Real kS = 1;
+const static Real kShininess = 3.0;
 
 RendererOutput InitOutput(Index width, Index height) {
     RendererOutput result;
@@ -106,8 +111,9 @@ private:
         return static_cast<Real>(width) / height / stretch_aspect;
     }
 
-    RendererOutput BuildOutput(Width width, Height height, const std::vector<Polygon>& polygons,
-                               const std::vector<Color>& colors) const {
+    RendererOutput BuildOutput(
+        Width width, Height height, const std::vector<Polygon>& polygons,
+        const std::vector<std::array<Color, Polygon::kVerticiesCount>>& colors) const {
         RendererOutput result = InitOutput(width, height);
         for (Index i = 0; i < polygons.size(); ++i) {
             DrawPolygon(result, polygons[i], colors[i]);
@@ -123,16 +129,31 @@ private:
         }
     }
 
+    Color CalculateColor(Index x, Index y, const Polygon& p,
+                         const std::array<Color, Polygon::kVerticiesCount>& color) const {
+        Vector3 result{0, 0, 0};
+        Real sum = 0;
+        for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
+            assert(colors::IsCorrect(Vector3(color[i])));
+            Real len = glm::length(Vector2(x, y) - Vector2(p.GetVerticies()[i]));
+            result += Vector3(color[i]) / (len + 1);
+            sum += (1.0 / (len + 1));
+        }
+        result /= sum;
+        return result;
+    }
+
     void UpdateResult(RendererOutput& result, Index x, Index y, const Polygon& p,
-                      Color color) const {
+                      const std::array<Color, Polygon::kVerticiesCount>& color) const {
         if (GetZProjectionCoordinate({x, y}, p) < result.z_buffer[x][y]) {
             result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
             result.surface_color[x][y] = p.GetColor();
-            result.visible_color[x][y] = color;
+            result.visible_color[x][y] = CalculateColor(x, y, p, color);
         }
     }
 
-    void DrawPolygon(RendererOutput& result, const Polygon& p, Color color) const {
+    void DrawPolygon(RendererOutput& result, const Polygon& p,
+                     const std::array<Color, Polygon::kVerticiesCount>& color) const {
         const auto& verticies = p.GetVerticies();
         Line2 l1{verticies[0], verticies[2]};
         Line2 l2{verticies[0], verticies[1]};
@@ -143,7 +164,7 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0.0, y1 - 1);
+            for (SizeType y = std::max(0.0, y1);
                  y < std::min(y2 + 1, static_cast<Real>(result.width)); ++y) {
                 UpdateResult(result, x, y, p, color);
             }
@@ -154,13 +175,13 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0.0, y1 - 1);
+            for (SizeType y = std::max(0.0, y1);
                  y < std::min(y2 + 1, static_cast<Real>(result.width)); ++y) {
                 UpdateResult(result, x, y, p, color);
             }
         }
         if (verticies[1].x == verticies[2].x) {
-            for (SizeType y = std::max(0.0, verticies[1].y - 1);
+            for (SizeType y = std::max(0.0, verticies[1].y);
                  y <= std::min(verticies[2].y, result.width - 1.0); ++y) {
                 UpdateResult(result, verticies[1].x, y, p, color);
             }
@@ -288,21 +309,37 @@ private:
         poly = new_poly;
     }
 
-    std::vector<Color> GetVisibleColors(const std::vector<Polygon>& poly,
-                                        const std::vector<LightInfo>& lights) const {
-        std::vector<Color> result;
+    std::vector<std::array<Color, Polygon::kVerticiesCount>> GetVisibleColors(
+        const std::vector<Polygon>& poly, const std::vector<LightInfo>& lights) const {
+        std::vector<std::array<Color, Polygon::kVerticiesCount>> result;
         for (const auto& p : poly) {
-            Color color = static_cast<Vector3>(p.GetColor()) * kAmbientLightEnergy;
-            for (const LightInfo& light : lights) {
-                Vector3 light_direction = Centroid(p.GetVerticies()) - light.position;
-                if (glm::dot(light_direction, p.GetNormal()) > -kEps) {
-                    Real energy = light.info.GetEnergy() *
-                                  CosineBetweenVectors(light_direction, p.GetNormal());
-                    color = static_cast<Vector3>(color) * (1 - energy) +
-                            static_cast<Vector3>(light.info.GetColor()) * energy;
+            std::array<Color, Polygon::kVerticiesCount> arr;
+            for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
+                arr[i] = static_cast<Vector3>(p.GetColor()) * kAmbientLightEnergy;
+                for (const LightInfo& light : lights) {
+                    Vector3 light_direction = light.position - p.GetVerticies()[i];
+                    light_direction /= glm::length(light_direction);
+                    Vector3 normal = -p.GetNormal();
+                    normal /= glm::length(normal);
+                    if (glm::dot(light_direction, normal) < 0) {
+                        continue;
+                    }
+                    Vector3 reflection =
+                        2 * glm::dot(light_direction, normal) * normal - light_direction;
+                    reflection /= glm::length(reflection);
+                    Vector3 viewer_direction = -p.GetVerticies()[i];
+                    viewer_direction /= glm::length(viewer_direction);
+                    arr[i] += kD * glm::dot(light_direction, normal) * light.info.GetEnergy() *
+                                  Vector3(light.info.GetColor()) +
+                              kS * std::pow(glm::dot(reflection, viewer_direction), kShininess) *
+                                  light.info.GetEnergy();
+                }
+                for (Index j = 0; j < 3; ++j) {
+                    assert(arr[i][j] > 0 && "Renderer: Negative light value");
+                    arr[i][j] = std::min(arr[i][j], 255u);
                 }
             }
-            result.push_back(color);
+            result.push_back(arr);
         }
         return result;
     }

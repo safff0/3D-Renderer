@@ -132,7 +132,9 @@ Triangle3D& Polygon::GetVerticies() {
 }
 
 Vector3 Polygon::GetNormal() const {
-    return Plane3(*this).GetCoefficients();
+    Vector3 res = Plane3(*this).GetCoefficients();
+    res /= glm::length(res);
+    return res;
 }
 
 void Polygon::FlipNormal() {
