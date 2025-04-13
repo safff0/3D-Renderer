@@ -59,8 +59,8 @@ public:
 
     const Matrix4& GetTransform() const;
     const Matrix4& GetReverseTransform() const;
-    Matrix4 GetGlobalTransform() const;
-    Matrix4 GetGlobalReverseTransform() const;
+    const Matrix4& GetGlobalTransform() const;
+    const Matrix4& GetGlobalReverseTransform() const;
 
     void SetPosition(Vector3 new_pos);
     Vector3 GetPosition() const;
@@ -87,6 +87,8 @@ public:
 
 private:
     static constexpr Matrix4 kDefaultTransform = Matrix4(1.0f);
+
+    void UpdateSubtreeTransform();
     // Invariants
     bool HasParent(const Node& other_node) const;
 
@@ -96,6 +98,8 @@ private:
 
     Matrix4 transform_ = kDefaultTransform;
     Matrix4 reverse_transform_ = kDefaultTransform;
+    Matrix4 g_transform_ = kDefaultTransform;
+    Matrix4 g_reverse_transform_ = kDefaultTransform;
 };
 
 }  // namespace engine::details

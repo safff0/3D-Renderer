@@ -89,7 +89,7 @@ public:
     using SizeType = Renderer::SizeType;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                          Height height, Real stretch_aspect) const {
+                          Height height, Real stretch_aspect, RenderModeTag mode) const {
         std::vector<Polygon> polygons;
         std::vector<LightInfo> lights;
         FindKeyObjects(scene.GetRoot(), polygons,
@@ -98,12 +98,12 @@ public:
                        camera);    // Transform polygons into camera relative space
         Filter(polygons, camera);  // Discard not visible polygons
         Clip(polygons, camera, GetAspectRatio(width, height, stretch_aspect));  // Clipping
-        auto visible_colors = GetVisibleColors(polygons, lights);
+        auto visible_colors = GetVisibleColors(polygons, lights, mode);
         PerspectiveProjection(
             polygons, camera,
             GetAspectRatio(width, height, stretch_aspect));  // Perform perspective projection
         Normalize(polygons, width, height, stretch_aspect);  // Prepare polygons for rasterization
-        return BuildOutput(width, height, polygons, visible_colors);  // Rasterize
+        return BuildOutput(width, height, polygons, visible_colors, mode);  // Rasterize
     }
 
 private:
@@ -111,12 +111,12 @@ private:
         return static_cast<Real>(width) / height / stretch_aspect;
     }
 
-    RendererOutput BuildOutput(
-        Width width, Height height, const std::vector<Polygon>& polygons,
-        const std::vector<std::array<Color, Polygon::kVerticiesCount>>& colors) const {
+    RendererOutput BuildOutput(Width width, Height height, const std::vector<Polygon>& polygons,
+                               const std::vector<std::vector<Color>>& colors,
+                               RenderModeTag mode) const {
         RendererOutput result = InitOutput(width, height);
         for (Index i = 0; i < polygons.size(); ++i) {
-            DrawPolygon(result, polygons[i], colors[i]);
+            DrawPolygon(result, polygons[i], colors[i], mode);
         }
         return result;
     }
@@ -129,8 +129,11 @@ private:
         }
     }
 
-    Color CalculateColor(Index x, Index y, const Polygon& p,
-                         const std::array<Color, Polygon::kVerticiesCount>& color) const {
+    inline Color CalculateColor(Index x, Index y, const Polygon& p, const std::vector<Color>& color,
+                                RenderModeTag mode) const {
+        if (mode == Optimize) {
+            return color[0];
+        }
         Vector3 result{0, 0, 0};
         Real sum = 0;
         for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
@@ -144,17 +147,17 @@ private:
     }
 
     void UpdateResult(RendererOutput& result, Index x, Index y, const Polygon& p,
-                      const std::array<Color, Polygon::kVerticiesCount>& color) const {
+                      const std::vector<Color>& color, RenderModeTag mode) const {
         if (GetZProjectionCoordinate({x, y}, p) < result.z_buffer[x][y]) {
             result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
             result.surface_color[x][y] = p.GetColor();
-            result.visible_color[x][y] = CalculateColor(x, y, p, color);
+            result.visible_color[x][y] = CalculateColor(x, y, p, color, mode);
             result.normal_[x][y] = -1.0 * p.GetNormal();
         }
     }
 
-    void DrawPolygon(RendererOutput& result, const Polygon& p,
-                     const std::array<Color, Polygon::kVerticiesCount>& color) const {
+    void DrawPolygon(RendererOutput& result, const Polygon& p, const std::vector<Color>& color,
+                     RenderModeTag mode) const {
         const auto& verticies = p.GetVerticies();
         Line2 l1{verticies[0], verticies[2]};
         Line2 l2{verticies[0], verticies[1]};
@@ -167,7 +170,7 @@ private:
             }
             for (SizeType y = std::max(0.0, y1); y < std::min(y2, static_cast<Real>(result.width));
                  ++y) {
-                UpdateResult(result, x, y, p, color);
+                UpdateResult(result, x, y, p, color, mode);
             }
         }
         for (SizeType x = verticies[1].x; x < verticies[2].x; ++x) {
@@ -178,13 +181,13 @@ private:
             }
             for (SizeType y = std::max(0.0, y1); y < std::min(y2, static_cast<Real>(result.width));
                  ++y) {
-                UpdateResult(result, x, y, p, color);
+                UpdateResult(result, x, y, p, color, mode);
             }
         }
         if (verticies[1].x == verticies[2].x) {
             for (SizeType y = std::max(0.0, verticies[1].y);
                  y < std::min(verticies[2].y, static_cast<Real>(result.width)); ++y) {
-                UpdateResult(result, verticies[1].x, y, p, color);
+                UpdateResult(result, verticies[1].x, y, p, color, mode);
             }
         }
     }
@@ -310,34 +313,45 @@ private:
         poly = new_poly;
     }
 
-    std::vector<std::array<Color, Polygon::kVerticiesCount>> GetVisibleColors(
-        const std::vector<Polygon>& poly, const std::vector<LightInfo>& lights) const {
-        std::vector<std::array<Color, Polygon::kVerticiesCount>> result;
+    Color GetPhongShading(Vector3 point, Color color, Vector3 p_normal,
+                          const std::vector<LightInfo>& lights) const {
+        Color res = static_cast<Vector3>(color) * kAmbientLightEnergy;
+        for (const LightInfo& light : lights) {
+            Vector3 light_direction = light.position - point;
+            light_direction /= glm::length(light_direction);
+            Vector3 normal = -p_normal;
+            normal /= glm::length(normal);
+            if (glm::dot(light_direction, normal) < 0) {
+                continue;
+            }
+            Vector3 reflection = 2 * glm::dot(light_direction, normal) * normal - light_direction;
+            reflection /= glm::length(reflection);
+            Vector3 viewer_direction = -point;
+            viewer_direction /= glm::length(viewer_direction);
+            res += kD * glm::dot(light_direction, normal) * light.info.GetEnergy() *
+                       Vector3(light.info.GetColor()) +
+                   kS * std::pow(glm::dot(reflection, viewer_direction), kShininess) *
+                       light.info.GetEnergy();
+        }
+        for (Index j = 0; j < 3; ++j) {
+            res[j] = std::max(0u, std::min(res[j], 255u));
+        }
+        return res;
+    }
+
+    std::vector<std::vector<Color>> GetVisibleColors(const std::vector<Polygon>& poly,
+                                                     const std::vector<LightInfo>& lights,
+                                                     RenderModeTag mode) const {
+        std::vector<std::vector<Color>> result;
         for (const auto& p : poly) {
-            std::array<Color, Polygon::kVerticiesCount> arr;
+            if (mode == Optimize) {
+                Vector3 point = Centroid(p.GetVerticies());
+                result.push_back({GetPhongShading(point, p.GetColor(), p.GetNormal(), lights)});
+                continue;
+            }
+            std::vector<Color> arr(Polygon::kVerticiesCount);
             for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
-                arr[i] = static_cast<Vector3>(p.GetColor()) * kAmbientLightEnergy;
-                for (const LightInfo& light : lights) {
-                    Vector3 light_direction = light.position - p.GetVerticies()[i];
-                    light_direction /= glm::length(light_direction);
-                    Vector3 normal = -p.GetNormal();
-                    normal /= glm::length(normal);
-                    if (glm::dot(light_direction, normal) < 0) {
-                        continue;
-                    }
-                    Vector3 reflection =
-                        2 * glm::dot(light_direction, normal) * normal - light_direction;
-                    reflection /= glm::length(reflection);
-                    Vector3 viewer_direction = -p.GetVerticies()[i];
-                    viewer_direction /= glm::length(viewer_direction);
-                    arr[i] += kD * glm::dot(light_direction, normal) * light.info.GetEnergy() *
-                                  Vector3(light.info.GetColor()) +
-                              kS * std::pow(glm::dot(reflection, viewer_direction), kShininess) *
-                                  light.info.GetEnergy();
-                }
-                for (Index j = 0; j < 3; ++j) {
-                    arr[i][j] = std::max(0u, std::min(arr[i][j], 255u));
-                }
+                arr[i] = GetPhongShading(p.GetVerticies()[i], p.GetColor(), p.GetNormal(), lights);
             }
             result.push_back(arr);
         }
@@ -382,8 +396,8 @@ Renderer& Renderer::operator=(Renderer&& other) noexcept {
 }
 
 RendererOutput Renderer::Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                                Height height, Real stretch_aspect) const {
-    return impl_->Render(scene, camera, width, height, stretch_aspect);
+                                Height height, Real stretch_aspect, RenderModeTag mode) const {
+    return impl_->Render(scene, camera, width, height, stretch_aspect, mode);
 }
 
 void Renderer::Swap(Renderer& other) {

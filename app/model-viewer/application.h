@@ -31,7 +31,7 @@ private:
     static constexpr engine::Vector3 kAmbientLightPosition = {10, 10, 10};
     static constexpr engine::Real kPanSpeed = -200;
     static constexpr engine::Real kMoveSpeed = 5;
-    static constexpr engine::Real kZoomSpeed = 0.4;
+    static constexpr engine::Real kZoomSpeed = 0.3;
 
     Index width_ = kDefaultWidth;
     Index height_ = kDefaultHeight;

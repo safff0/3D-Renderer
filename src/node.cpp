@@ -11,7 +11,12 @@
 namespace engine::details {
 
 Node::Node(const Node& other)
-    : data_{other.data_}, parent_{other.parent_}, transform_{other.transform_} {
+    : data_{other.data_},
+      parent_{other.parent_},
+      transform_{other.transform_},
+      reverse_transform_{other.reverse_transform_},
+      g_transform_{other.g_transform_},
+      g_reverse_transform_{other.g_reverse_transform_} {
     // Copy subtree
     for (const std::unique_ptr<Node>& subtree : other.children_) {
         children_.push_back(std::make_unique<Node>(*subtree));
@@ -25,10 +30,14 @@ Node& Node::operator=(const Node& other) {
 }
 
 void Node::Swap(Node& other) {
+    assert(!other.HasParent(*this) && !HasParent(other) &&
+           "Node: Tried to link parent to its child");
     children_.swap(other.children_);
     std::swap(parent_, other.parent_);
     std::swap(data_, other.data_);
     std::swap(transform_, other.transform_);
+    UpdateSubtreeTransform();
+    other.UpdateSubtreeTransform();
 }
 
 Node* Node::GetParent() {
@@ -60,10 +69,12 @@ void Node::SetParent(Node& node) noexcept {
     Unlink();
     parent_ = &node;
     node.children_.emplace_back(this);
+    UpdateSubtreeTransform();
 }
 
 void Node::AddChild(Node& node) noexcept {
     node.SetParent(*this);
+    node.UpdateSubtreeTransform();
 }
 
 void Node::Unlink() noexcept {
@@ -85,24 +96,12 @@ const Matrix4& Node::GetReverseTransform() const {
     return reverse_transform_;
 }
 
-Matrix4 Node::GetGlobalTransform() const {
-    Matrix4 result(1.0);
-    const Node* temp = this;
-    while (temp->parent_ != nullptr) {
-        result = temp->GetTransform() * result;
-        temp = temp->GetParent();
-    }
-    return result;
+const Matrix4& Node::GetGlobalTransform() const {
+    return g_transform_;
 }
 
-Matrix4 Node::GetGlobalReverseTransform() const {
-    Matrix4 result(1.0);
-    const Node* temp = this;
-    while (temp->parent_ != nullptr) {
-        result = result * temp->GetReverseTransform();
-        temp = temp->GetParent();
-    }
-    return result;
+const Matrix4& Node::GetGlobalReverseTransform() const {
+    return g_reverse_transform_;
 }
 
 void Node::SetPosition(Vector3 new_pos) {
@@ -110,6 +109,7 @@ void Node::SetPosition(Vector3 new_pos) {
     new_pos -= transform_ * Vector4(0, 0, 0, 1);
     transform_ = glm::translate<Real>(Matrix4(1.0), new_pos) * transform_;
     reverse_transform_ = reverse_transform_ * glm::translate<Real>(Matrix4(1.0), -new_pos);
+    UpdateSubtreeTransform();
 }
 
 Vector3 Node::GetPosition() const {
@@ -122,6 +122,7 @@ void Node::SetRotationOnAxis(Real angle, Vector3 axis) {
     transform_ = glm::rotate<Real>(Matrix4(1), glm::radians(angle), axis) * transform_;
     reverse_transform_ =
         reverse_transform_ * glm::rotate<Real>(Matrix4(1.0), -glm::radians(angle), axis);
+    UpdateSubtreeTransform();
 }
 
 void Node::SetRotationX(Real angle) {
@@ -134,6 +135,18 @@ void Node::SetRotationY(Real angle) {
 
 void Node::SetRotationZ(Real angle) {
     SetRotationOnAxis(angle, {0, 0, 1});
+}
+
+void Node::UpdateSubtreeTransform() {
+    if (parent_ == nullptr) {
+        g_transform_ = g_reverse_transform_ = kDefaultTransform;
+    } else {
+        g_transform_ = transform_ * GetParent()->GetGlobalTransform();
+        g_reverse_transform_ = reverse_transform_ * GetParent()->GetGlobalReverseTransform();
+    }
+    for (auto& child : children_) {
+        child->UpdateSubtreeTransform();
+    }
 }
 
 bool Node::HasParent(const Node& other_node) const {

@@ -21,6 +21,8 @@ namespace details {
 class RendererImpl;
 }
 
+enum RenderModeTag { Default, Optimize };
+
 class Scene;
 
 class Renderer {
@@ -37,7 +39,8 @@ public:
     Renderer& operator=(Renderer&& other) noexcept;
 
     RendererOutput Render(const Scene& scene, ConstReference<Camera> camera, Width width,
-                          Height height, Real stretch_aspect = 1.0) const;
+                          Height height, Real stretch_aspect = 1.0,
+                          RenderModeTag mode = Default) const;
 
     void Swap(Renderer& other);
 

@@ -36,7 +36,7 @@ std::vector<uint8_t> SfFrameFromEngineOutput(const engine::RendererOutput& outpu
 const static engine::Matrix4 kRotationMatrixX =
     glm::rotate(engine::Matrix4(1.0), glm::radians(90.0), {1.0, 0.0, 0.0});
 
-const static engine::Real kMaxZoom = 30;
+const static engine::Real kMaxZoom = 10;
 const static engine::Real kMinZoom = 140;
 
 }  // namespace
@@ -63,7 +63,8 @@ void Application::BuildScene(const std::string& model_path) {
 }
 
 void Application::ShowFrame() {
-    auto result = renderer_.Render(scene_, camera_, engine::Width{width_}, engine::Height{height_});
+    auto result = renderer_.Render(scene_, camera_, engine::Width{width_}, engine::Height{height_},
+                                   engine::Optimize);
     sf::Texture frame(sf::Vector2u{width_, height_});
     frame.update(SfFrameFromEngineOutput(result).data());
     window_.draw(sf::Sprite{frame});
@@ -118,14 +119,14 @@ void Application::OnMBRelease(const sf::Event::MouseButtonReleased& ev) {
 void Application::OnMouseMove(const sf::Event::MouseMoved& ev) {
     if (pan_) {
         engine::Real rotate_y = kPanSpeed * (ev.position.x - last_mouse_pos_pan_.x) / width_;
-        engine::Real rotate_x = kPanSpeed * (ev.position.y - last_mouse_pos_pan_.y) / height_;
+        engine::Real rotate_x = kPanSpeed * (ev.position.y - last_mouse_pos_pan_.y) / width_;
         camera_pivot_.SetRotationY(rotate_y);
         camera_pivot_.SetRotationX(rotate_x);
         last_mouse_pos_pan_ = sf::Mouse::getPosition(window_);
     }
     if (move_) {
         engine::Real move_x = -kMoveSpeed * (ev.position.x - last_mouse_pos_move_.x) / width_;
-        engine::Real move_y = kMoveSpeed * (ev.position.y - last_mouse_pos_move_.y) / height_;
+        engine::Real move_y = kMoveSpeed * (ev.position.y - last_mouse_pos_move_.y) / width_;
         camera_pivot_.SetPosition({move_x, move_y, 0});
         last_mouse_pos_move_ = sf::Mouse::getPosition(window_);
     }
