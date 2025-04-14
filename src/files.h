@@ -3,27 +3,27 @@
 #include "geometry.h"
 
 #include <fstream>
+#include <optional>
 #include <string>
 
 namespace engine {
 
 class OBJParser {
 public:
-    OBJParser(const std::string& path);
+    OBJParser(const FilePath& path);
 
-    const std::vector<std::vector<Vector3>>& GetFaces();
+    std::optional<Polygon> GetPolygon();
+
+    void Reset();
 
 private:
     Index ParseId(const std::string& obj_id, Index size);
-
-    void ReadVerticies();
-    void ReadNormals();
-    void ReadFaces();
+    std::pair<Index, Index> ParseEntry(const std::string& entry);
 
     std::fstream file_;
+    std::vector<std::string> entries_;
     std::vector<Vector3> verticies_;
     std::vector<Vector3> normals_;
-    std::vector<std::vector<Vector3>> data_;
 };
 
 }  // namespace engine

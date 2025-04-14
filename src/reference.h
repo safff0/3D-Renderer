@@ -12,9 +12,9 @@
 namespace engine {
 
 template <details::NoQualifiers T>
-using Reference = details::ReferenceImpl<T, false>;
+using Reference = details::ReferenceImpl<T, details::NonConstValueTag>;
 
 template <details::NoQualifiers T>
-using ConstReference = details::ReferenceImpl<T, true>;
+using ConstReference = details::ReferenceImpl<T, details::ConstValueTag>;
 
 }  // namespace engine

@@ -1,29 +1,54 @@
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <SFML/Graphics/Texture.hpp>
 #include <SFML/System/Vector2.hpp>
 #include <SFML/Window/Event.hpp>
 
+#include <filesystem>
+#include <string>
+
+#include "camera.h"
 #include "engine_fwd.h"
 #include "node.h"
+#include "renderer.h"
+#include "scene.h"
 
 namespace app::mv {
 
+enum class RotationState { Keep, Rotate, Stop };
+enum class MovementState { Keep, Move, Stop };
+
+struct ApplicationState {
+    RotationState rotate = RotationState::Keep;
+    MovementState move = MovementState::Keep;
+    sf::Vector2i mouse_pos = {-1, -1};
+    engine::Real zoom = 0;
+    bool running = true;
+};
+
 class Application {
     using Index = uint32_t;
+    using FilePath = engine::FilePath;
+    using Renderer = engine::Renderer;
+    template <typename T>
+    using Reference = engine::Reference<T>;
+    using Camera = engine::Camera;
+    using EmptyNode = engine::EmptyNode;
+    using Scene = engine::Scene;
 
 public:
-    void Run(const std::string& model_path);
+    Application(const FilePath& model_path);
+
+    void Run();
 
 private:
-    void BuildScene(const std::string& model_path);
-    void ShowFrame();
+    void ConstructScene(const FilePath& model_path);
+    sf::Texture BuildFrame();
+    void DisplayFrame(const sf::Texture& frame);
 
-    void HandleEvents();
-    void OnClose(const sf::Event::Closed& ev);
-    void OnResize(const sf::Event::Resized& ev);
-    void OnMBPress(const sf::Event::MouseButtonPressed& ev);
-    void OnMBRelease(const sf::Event::MouseButtonReleased& ev);
-    void OnMouseMove(const sf::Event::MouseMoved& ev);
-    void OnMouseScroll(const sf::Event::MouseWheelScrolled& ev);
+    ApplicationState HandleInput();
+
+    void UpdateScene(const ApplicationState& new_state);
+    void ChangeState(const ApplicationState& new_state);
 
     static constexpr Index kDefaultHeight = 600;
     static constexpr Index kDefaultWidth = 800;
@@ -33,19 +58,16 @@ private:
     static constexpr engine::Real kMoveSpeed = 5;
     static constexpr engine::Real kZoomSpeed = 0.3;
 
-    Index width_ = kDefaultWidth;
-    Index height_ = kDefaultHeight;
     sf::RenderWindow window_;
 
-    engine::Renderer renderer_;
-    engine::Scene scene_;
-    engine::Reference<engine::EmptyNode> camera_pivot_;
-    engine::Reference<engine::Camera> camera_;
+    Renderer renderer_;
+    Scene scene_;
+    Reference<EmptyNode> camera_pivot_;
+    Reference<Camera> camera_;
 
-    bool pan_ = false;
-    sf::Vector2i last_mouse_pos_pan_;
-    bool move_ = false;
-    sf::Vector2i last_mouse_pos_move_;
+    ApplicationState last_state_;
+
+    FilePath model_path_;
 };
 
 };  // namespace app::mv

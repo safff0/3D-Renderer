@@ -16,11 +16,8 @@ Node::Node(const Node& other)
       transform_{other.transform_},
       reverse_transform_{other.reverse_transform_},
       g_transform_{other.g_transform_},
-      g_reverse_transform_{other.g_reverse_transform_} {
-    // Copy subtree
-    for (const std::unique_ptr<Node>& subtree : other.children_) {
-        children_.push_back(std::make_unique<Node>(*subtree));
-    }
+      g_reverse_transform_{other.g_reverse_transform_},
+      children_{} {
 }
 
 Node& Node::operator=(const Node& other) {
@@ -29,15 +26,35 @@ Node& Node::operator=(const Node& other) {
     return *this;
 }
 
+Node::Node(Node&& other)
+    : data_{std::move(other.data_)},
+      parent_{other.parent_},
+      transform_{std::move(other.transform_)},
+      reverse_transform_{std::move(other.reverse_transform_)},
+      g_transform_{std::move(other.g_transform_)},
+      g_reverse_transform_{std::move(other.g_reverse_transform_)},
+      children_{std::move(other.children_)} {
+    for (auto& child : other.children_) {
+        child->parent_ = this;
+    }
+}
+
+Node& Node::operator=(Node&& other) {
+    Swap(other);
+    return *this;
+}
+
 void Node::Swap(Node& other) {
-    assert(!other.HasParent(*this) && !HasParent(other) &&
-           "Node: Tried to link parent to its child");
-    children_.swap(other.children_);
-    std::swap(parent_, other.parent_);
     std::swap(data_, other.data_);
-    std::swap(transform_, other.transform_);
-    UpdateSubtreeTransform();
-    other.UpdateSubtreeTransform();
+}
+
+std::unique_ptr<Node> Node::CopySubtree() const {
+    std::unique_ptr<Node> result = std::make_unique<Node>(*this);
+    for (const auto& child : children_) {
+        result->children_.push_back(child->CopySubtree());
+        result->children_.back()->parent_ = result.get();
+    }
+    return result;
 }
 
 Node* Node::GetParent() {
@@ -77,6 +94,11 @@ void Node::AddChild(Node& node) noexcept {
     node.UpdateSubtreeTransform();
 }
 
+void Node::AddChild(Node&& node) noexcept {
+    node.SetParent(*this);
+    node.UpdateSubtreeTransform();
+}
+
 void Node::Unlink() noexcept {
     if (parent_ != nullptr) {
         Node* parent = GetParent();
@@ -88,11 +110,11 @@ void Node::Unlink() noexcept {
     }
 }
 
-const Matrix4& Node::GetTransform() const {
+const Matrix4& Node::GetLocalTransform() const {
     return transform_;
 }
 
-const Matrix4& Node::GetReverseTransform() const {
+const Matrix4& Node::GetLocalReverseTransform() const {
     return reverse_transform_;
 }
 

@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "alias.h"
 #include "camera.h"
+#include "color.h"
 #include "geometry.h"
 #include "light.h"
 #include "node.h"
@@ -22,19 +23,17 @@ namespace details {
 
 namespace {
 
-const static Real kAmbientLightEnergy = 0.2;
-const static Real kD = 1;
-const static Real kS = 1;
-const static Real kShininess = 3.0;
+constexpr Real kAmbientLightEnergy = 0.2;
+constexpr Real kD = 1;
+constexpr Real kS = 1;
+constexpr Real kShininess = 3.0;
 
 RendererOutput InitOutput(Index width, Index height) {
     RendererOutput result;
-    result.width = width;
-    result.height = height;
-    result.z_buffer.assign(height, std::vector<Real>(width, 1));
-    result.surface_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
-    result.visible_color.assign(height, std::vector<Color>(width, colors::kColorBlack));
-    result.normal_.assign(height, std::vector<Vector3>(width, {0, 0, -1}));
+    result.z_buffer = Table<Real>{height, width, 1};
+    result.surface_color = Table<Color>{height, width, engine::colors::kColorBlack};
+    result.visible_color = Table<Color>{height, width, colors::kColorBlack};
+    result.normal_map = Table<Vector3>{height, width, {0, 0, 1}};
     return result;
 }
 
@@ -45,7 +44,8 @@ struct ViewFrustum {
           bottom{pm[0][3] + pm[0][1], pm[1][3] + pm[1][1], pm[2][3] + pm[2][1],
                  pm[3][3] + pm[3][1]},
           top{pm[0][3] - pm[0][1], pm[1][3] - pm[1][1], pm[2][3] - pm[2][1], pm[3][3] - pm[3][1]},
-          near{pm[0][2], pm[1][2], pm[2][2], pm[3][2]} {
+          near{pm[0][3] + pm[0][2], pm[1][3] + pm[1][2], pm[2][3] + pm[2][2], pm[3][3] + pm[3][2]},
+          far{pm[0][3] - pm[0][2], pm[1][3] - pm[1][2], pm[2][3] - pm[2][2], pm[3][3] - pm[3][2]} {
     }
 
     Plane3 left;
@@ -53,11 +53,14 @@ struct ViewFrustum {
     Plane3 bottom;
     Plane3 top;
     Plane3 near;
+    Plane3 far;
 };
 
 std::vector<Plane3> ClippingPlanes(const ViewFrustum& vf) {
-    return {vf.left, vf.top, vf.right, vf.bottom};
+    return {vf.left, vf.top, vf.right, vf.bottom, vf.near, vf.far};
 }
+
+enum class PolygonInFrustumState { Outside, Inside, NeedsClipping };
 
 bool PointInFrustum(Vector3 p, const ViewFrustum& vf) {
     return vf.bottom.EquationValue(p) > -kEps && vf.top.EquationValue(p) > -kEps &&
@@ -74,6 +77,16 @@ bool PolygonOutsideFrustum(const Polygon& poly, const ViewFrustum& vf) {
     return !PointInFrustum(poly.GetVerticies()[0], vf) &&
            !PointInFrustum(poly.GetVerticies()[1], vf) &&
            !PointInFrustum(poly.GetVerticies()[2], vf);
+}
+
+PolygonInFrustumState GetPolygonFrustumState(const Polygon& poly, const ViewFrustum& vf) {
+    if (PolygonInFrustum(poly, vf)) {
+        return PolygonInFrustumState::Inside;
+    }
+    if (PolygonOutsideFrustum(poly, vf)) {
+        return PolygonInFrustumState::Outside;
+    }
+    return PolygonInFrustumState::NeedsClipping;
 }
 
 struct LightInfo {
@@ -98,7 +111,7 @@ public:
                        camera);    // Transform polygons into camera relative space
         Filter(polygons, camera);  // Discard not visible polygons
         Clip(polygons, camera, GetAspectRatio(width, height, stretch_aspect));  // Clipping
-        auto visible_colors = GetVisibleColors(polygons, lights, mode);
+        auto visible_colors = GetVisibleColors(polygons, lights, GetShadingAlgo(mode));
         PerspectiveProjection(
             polygons, camera,
             GetAspectRatio(width, height, stretch_aspect));  // Perform perspective projection
@@ -107,8 +120,21 @@ public:
     }
 
 private:
+    using ShadingAlgo = void (RendererImpl::*)(const Polygon&, const std::vector<LightInfo>&,
+                                               std::vector<std::vector<Color>>&) const;
+
     Real GetAspectRatio(Width width, Height height, Real stretch_aspect) const {
         return static_cast<Real>(width) / height / stretch_aspect;
+    }
+
+    ShadingAlgo GetShadingAlgo(RenderModeTag mode) const {
+        switch (mode) {
+            case Optimize:
+                return &RendererImpl::DoNoShading;
+            case Default:
+                return &RendererImpl::DoShading;
+        }
+        return &RendererImpl::DoNoShading;
     }
 
     RendererOutput BuildOutput(Width width, Height height, const std::vector<Polygon>& polygons,
@@ -148,11 +174,11 @@ private:
 
     void UpdateResult(RendererOutput& result, Index x, Index y, const Polygon& p,
                       const std::vector<Color>& color, RenderModeTag mode) const {
-        if (GetZProjectionCoordinate({x, y}, p) < result.z_buffer[x][y]) {
-            result.z_buffer[x][y] = GetZProjectionCoordinate({x, y}, p);
-            result.surface_color[x][y] = p.GetColor();
-            result.visible_color[x][y] = CalculateColor(x, y, p, color, mode);
-            result.normal_[x][y] = -1.0 * p.GetNormal();
+        if (GetZProjectionCoordinate({x, y}, p) < result.z_buffer(x, y)) {
+            result.z_buffer(x, y) = GetZProjectionCoordinate({x, y}, p);
+            result.surface_color(x, y) = p.GetColor();
+            result.visible_color(x, y) = CalculateColor(x, y, p, color, mode);
+            result.normal_map(x, y) = -1.0 * p.GetNormal();
         }
     }
 
@@ -168,8 +194,8 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0.0, y1); y < std::min(y2, static_cast<Real>(result.width));
-                 ++y) {
+            for (SizeType y = std::max(0.0, y1);
+                 y < std::min(y2, static_cast<Real>(result.z_buffer.Width())); ++y) {
                 UpdateResult(result, x, y, p, color, mode);
             }
         }
@@ -179,14 +205,14 @@ private:
             if (y1 > y2) {
                 std::swap(y1, y2);
             }
-            for (SizeType y = std::max(0.0, y1); y < std::min(y2, static_cast<Real>(result.width));
-                 ++y) {
+            for (SizeType y = std::max(0.0, y1);
+                 y < std::min(y2, static_cast<Real>(result.z_buffer.Width())); ++y) {
                 UpdateResult(result, x, y, p, color, mode);
             }
         }
         if (verticies[1].x == verticies[2].x) {
             for (SizeType y = std::max(0.0, verticies[1].y);
-                 y < std::min(verticies[2].y, static_cast<Real>(result.width)); ++y) {
+                 y < std::min(verticies[2].y, static_cast<Real>(result.z_buffer.Width())); ++y) {
                 UpdateResult(result, verticies[1].x, y, p, color, mode);
             }
         }
@@ -217,7 +243,7 @@ private:
 
     void FindKeyObjects(ConstReference<EmptyNode> node, std::vector<Polygon>& poly,
                         std::vector<LightInfo>& lights, Matrix4 transform = Matrix4(1.0f)) const {
-        transform = node.GetTransform() * transform;
+        transform = node.GetLocalTransform() * transform;
         if (Is<Object3D>(node)) {
             auto mesh = As<Object3D>(node)->GetMesh();
             for (const Polygon& polygon : mesh) {
@@ -237,7 +263,7 @@ private:
             polygon.ApplyTransformInplace(camera.GetGlobalReverseTransform());
         }
         for (LightInfo& light : lights) {
-            light.position = PointApplyTransform(light.position, camera.GetReverseTransform());
+            light.position = PointApplyTransform(light.position, camera.GetLocalReverseTransform());
         }
     }
 
@@ -256,58 +282,71 @@ private:
                                       camera->GetFar());
     }
 
+    std::vector<Polygon> ClipPolyThroughPlane(const std::vector<Polygon>& buffer, Plane3 plane,
+                                              std::vector<Polygon>& new_poly) const {
+        std::vector<Polygon> new_buffer;
+        for (const auto& pb : buffer) {
+            Index outside = 0;
+            Index id_outside = 0;
+            Index id_inside = 0;
+            std::vector<Index> ids;
+            for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
+                ids.push_back(i);
+                if (plane.EquationValue(pb.GetVerticies()[i]) > -kEps) {
+                    id_inside = i;
+                } else {
+                    ++outside;
+                    id_outside = i;
+                }
+            }
+            if (outside == 1) {
+                ids.erase(std::find(ids.begin(), ids.end(), id_outside));
+                auto p0 = Intersect(
+                    plane, Line3{pb.GetVerticies()[ids[0]], pb.GetVerticies()[id_outside]});
+                auto p1 = Intersect(
+                    plane, Line3{pb.GetVerticies()[ids[1]], pb.GetVerticies()[id_outside]});
+                new_buffer.push_back({p0, pb.GetVerticies()[ids[1]], pb.GetVerticies()[ids[0]]});
+                new_buffer.push_back({p0, p1, pb.GetVerticies()[ids[1]]});
+            } else if (outside == 2) {
+                ids.erase(std::find(ids.begin(), ids.end(), id_inside));
+                auto p0 = Intersect(plane,
+                                    Line3{pb.GetVerticies()[ids[0]], pb.GetVerticies()[id_inside]});
+                auto p1 = Intersect(plane,
+                                    Line3{pb.GetVerticies()[ids[1]], pb.GetVerticies()[id_inside]});
+                new_buffer.push_back({p0, p1, pb.GetVerticies()[id_inside]});
+            } else {
+                new_buffer.push_back(pb);
+            }
+        }
+        return new_buffer;
+    }
+
+    void ClipPoly(const Polygon& p, const ViewFrustum& vf, std::vector<Polygon>& new_poly) const {
+        std::vector<Polygon> buffer = {p};
+        for (Plane3 plane : ClippingPlanes(vf)) {
+            buffer = ClipPolyThroughPlane(buffer, plane, new_poly);
+        }
+        for (auto& pb : buffer) {
+            if (glm::dot(pb.GetNormal(), p.GetNormal()) < 0) {
+                pb.FlipNormal();
+            }
+        }
+        new_poly.insert(new_poly.end(), buffer.begin(), buffer.end());
+    }
+
     void Clip(std::vector<Polygon>& poly, ConstReference<Camera> camera, Real aspect) const {
         ViewFrustum vf(GetProjectionMatrix(camera, aspect));
         std::vector<Polygon> new_poly;
         for (const auto& p : poly) {
-            if (PolygonInFrustum(p, vf)) {
-                new_poly.push_back(p);
-            } else if (!PolygonOutsideFrustum(p, vf)) {
-                std::vector<Polygon> buffer = {p};
-                for (Plane3 plane : ClippingPlanes(vf)) {
-                    std::vector<Polygon> new_buffer;
-                    for (const auto& pb : buffer) {
-                        Index outside = 0;
-                        Index id_outside = 0;
-                        Index id_inside = 0;
-                        std::vector<Index> ids;
-                        for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
-                            ids.push_back(i);
-                            if (plane.EquationValue(pb.GetVerticies()[i]) > -kEps) {
-                                id_inside = i;
-                            } else {
-                                ++outside;
-                                id_outside = i;
-                            }
-                        }
-                        if (outside == 1) {
-                            ids.erase(std::find(ids.begin(), ids.end(), id_outside));
-                            auto p0 = Intersect(plane, Line3{pb.GetVerticies()[ids[0]],
-                                                             pb.GetVerticies()[id_outside]});
-                            auto p1 = Intersect(plane, Line3{pb.GetVerticies()[ids[1]],
-                                                             pb.GetVerticies()[id_outside]});
-                            new_buffer.push_back(
-                                {p0, pb.GetVerticies()[ids[1]], pb.GetVerticies()[ids[0]]});
-                            new_buffer.push_back({p0, p1, pb.GetVerticies()[ids[1]]});
-                        } else if (outside == 2) {
-                            ids.erase(std::find(ids.begin(), ids.end(), id_inside));
-                            auto p0 = Intersect(plane, Line3{pb.GetVerticies()[ids[0]],
-                                                             pb.GetVerticies()[id_inside]});
-                            auto p1 = Intersect(plane, Line3{pb.GetVerticies()[ids[1]],
-                                                             pb.GetVerticies()[id_inside]});
-                            new_buffer.push_back({p0, p1, pb.GetVerticies()[id_inside]});
-                        } else {
-                            new_buffer.push_back(pb);
-                        }
-                    }
-                    buffer = new_buffer;
-                }
-                for (auto& pb : buffer) {
-                    if (glm::dot(pb.GetNormal(), p.GetNormal()) < 0) {
-                        pb.FlipNormal();
-                    }
-                }
-                new_poly.insert(new_poly.end(), buffer.begin(), buffer.end());
+            switch (GetPolygonFrustumState(p, vf)) {
+                case PolygonInFrustumState::Inside:
+                    new_poly.push_back(p);
+                    break;
+                case PolygonInFrustumState::NeedsClipping:
+                    ClipPoly(p, vf, new_poly);
+                    break;
+                case PolygonInFrustumState::Outside:
+                    break;
             }
         }
         poly = new_poly;
@@ -339,21 +378,27 @@ private:
         return res;
     }
 
+    void DoNoShading(const Polygon& p, const std::vector<LightInfo>& lights,
+                     std::vector<std::vector<Color>>& result) const {
+        Vector3 point = Centroid(p.GetVerticies());
+        result.push_back({GetPhongShading(point, p.GetColor(), p.GetNormal(), lights)});
+    }
+
+    void DoShading(const Polygon& p, const std::vector<LightInfo>& lights,
+                   std::vector<std::vector<Color>>& result) const {
+        std::vector<Color> arr(Polygon::kVerticiesCount);
+        for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
+            arr[i] = GetPhongShading(p.GetVerticies()[i], p.GetColor(), p.GetNormal(), lights);
+        }
+        result.push_back(arr);
+    }
+
     std::vector<std::vector<Color>> GetVisibleColors(const std::vector<Polygon>& poly,
                                                      const std::vector<LightInfo>& lights,
-                                                     RenderModeTag mode) const {
+                                                     ShadingAlgo shading) const {
         std::vector<std::vector<Color>> result;
         for (const auto& p : poly) {
-            if (mode == Optimize) {
-                Vector3 point = Centroid(p.GetVerticies());
-                result.push_back({GetPhongShading(point, p.GetColor(), p.GetNormal(), lights)});
-                continue;
-            }
-            std::vector<Color> arr(Polygon::kVerticiesCount);
-            for (Index i = 0; i < Polygon::kVerticiesCount; ++i) {
-                arr[i] = GetPhongShading(p.GetVerticies()[i], p.GetColor(), p.GetNormal(), lights);
-            }
-            result.push_back(arr);
+            (this->*shading)(p, lights, result);
         }
         return result;
     }
@@ -379,7 +424,8 @@ Renderer::Renderer() : impl_(std::make_unique<RendererImpl>()) {
 
 Renderer::~Renderer() = default;
 
-Renderer::Renderer(const Renderer& other) : impl_{std::make_unique<RendererImpl>(*other.impl_)} {
+Renderer::Renderer(const Renderer& other)
+    : impl_{other.impl_ != nullptr ? std::make_unique<RendererImpl>(*other.impl_) : nullptr} {
 }
 
 Renderer& Renderer::operator=(const Renderer& other) {

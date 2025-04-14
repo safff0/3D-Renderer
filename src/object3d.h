@@ -21,14 +21,13 @@ public:
                              IndexType subdivide = kDefaultSubdivision);
     static Object3D Cone(Type radius = kDefaultObjectSize, Type height = kDefaultObjectSize,
                          IndexType subdivide = kDefaultSubdivision);
-    static Object3D FromFile(const std::string& path);
+    static Object3D FromFile(const FilePath& path);
 
 private:
     static constexpr Type kDefaultObjectSize = 1;
     static constexpr Type kDefaultSubdivision = 20;
     static constexpr Type kDefaultTorusThickness = 0.4;
 
-    // Counter clockwise for polygons facing camera
     void AddPolygon(const Polygon& poly);
     void AddFace(const std::vector<Vector3>& face);
 

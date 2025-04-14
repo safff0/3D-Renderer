@@ -8,13 +8,48 @@
 
 namespace engine {
 
+using Width = Alias<Index, struct width_tag>;
+using Height = Alias<Index, struct height_tag>;
+
+template <typename T>
+class Table {
+public:
+    Table() = default;
+
+    Table(Index height, Index width, T default_value = T{}) : h_{height}, w_{width} {
+        data_.assign(height * width, default_value);
+    }
+
+    Index Height() const {
+        return h_;
+    }
+
+    Index Width() const {
+        return w_;
+    }
+
+    T operator()(Index x, Index y) const {
+        assert(x >= 0 && y >= 0 && x < h_ && y < w_ && "Table: Index out of range");
+        return data_[x * w_ + y];
+    }
+
+    T& operator()(Index x, Index y) {
+        assert(x >= 0 && y >= 0 && x < h_ && y < w_ && "Table: Index out of range");
+        return data_[x * w_ + y];
+    }
+
+private:
+    Index h_ = 0;
+    Index w_ = 0;
+
+    std::vector<T> data_;
+};
+
 struct RendererOutput {
-    Index width;
-    Index height;
-    std::vector<std::vector<Real>> z_buffer;
-    std::vector<std::vector<Color>> surface_color;
-    std::vector<std::vector<Color>> visible_color;
-    std::vector<std::vector<Vector3>> normal_;
+    Table<Real> z_buffer;
+    Table<Color> surface_color;
+    Table<Color> visible_color;
+    Table<Vector3> normal_map;
 };
 
 namespace details {

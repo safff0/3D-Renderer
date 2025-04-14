@@ -1,18 +1,96 @@
 #include "files.h"
 
+#include <fstream>
+#include <iostream>
 #include <sstream>
 #include <string>
+#include <vector>
+#include "alias.h"
+#include "geometry.h"
 
 namespace engine {
 
-OBJParser::OBJParser(const std::string& path) : file_{path} {
-    ReadVerticies();
-    ReadNormals();
-    ReadFaces();
+namespace {
+
+const std::string kVertexPrefix = "v ";
+const std::string kNormalPrefix = "vn ";
+const std::string kFacePrefix = "f ";
+
+std::vector<std::string> StrSplit(const std::string& str, char delim) {
+    std::stringstream stream{str};
+    std::vector<std::string> result;
+    for (std::string part; std::getline(stream, part, delim);) {
+        result.push_back(part);
+    }
+    return result;
 }
 
-const std::vector<std::vector<Vector3>>& OBJParser::GetFaces() {
-    return data_;
+std::vector<std::string> GetLines(std::fstream& f) {
+    std::vector<std::string> result;
+    for (std::string part; std::getline(f, part, '\n');) {
+        result.push_back(part);
+    }
+    return result;
+}
+
+}  // namespace
+
+OBJParser::OBJParser(const FilePath& path) : file_{path} {
+    for (auto line : GetLines(file_)) {
+        if (line.starts_with(kVertexPrefix)) {
+            auto coords = StrSplit(line.substr(kVertexPrefix.size()), ' ');
+            assert(coords.size() >= 3 && "OBJ Parser: Bad vertex coordinates");
+            verticies_.emplace_back(std::atof(coords[0].data()), std::atof(coords[1].data()),
+                                    std::atof(coords[2].data()));
+        } else if (line.starts_with(kNormalPrefix)) {
+            auto coords = StrSplit(line.substr(kNormalPrefix.size()), ' ');
+            assert(coords.size() >= 3 && "OBJ Parser: Bad normal coordinates");
+            normals_.emplace_back(std::atof(coords[0].data()), std::atof(coords[1].data()),
+                                  std::atof(coords[2].data()));
+        }
+    }
+    Reset();
+}
+
+std::optional<Polygon> OBJParser::GetPolygon() {
+    if (entries_.size() < Polygon::kVerticiesCount) {
+        std::string line;
+        do {
+            if (!std::getline(file_, line)) {
+                return std::nullopt;
+            }
+        } while (!line.starts_with(kFacePrefix));
+        assert(line.starts_with(kFacePrefix) && "OBJ Parser: Unexpected line");
+        entries_ = StrSplit(line.substr(kFacePrefix.size()), ' ');
+    }
+    Triangle3D verticies;
+    std::vector<Vector3> normals;
+    auto [v_id, n_id] = ParseEntry(entries_.front());
+    verticies[0] = verticies_[v_id];
+    if (n_id < normals_.size()) {
+        normals.push_back(normals_[n_id]);
+    }
+    for (Index i = 1; i < Polygon::kVerticiesCount; ++i) {
+        auto [v_id, n_id] = ParseEntry(entries_.back());
+        entries_.pop_back();
+        verticies[i] = verticies_[v_id];
+        if (n_id < normals_.size()) {
+            normals.push_back(normals_[n_id]);
+        }
+    }
+    Vector3 poly_normal = Plane3{verticies}.GetCoefficients();
+    if (glm::dot(poly_normal, Mean(normals)) >= 0) {
+        std::reverse(verticies.begin(), verticies.end());
+    }
+    return Polygon{verticies};
+}
+
+void OBJParser::Reset() {
+    if (!file_ && !file_.eof()) {
+        std::cerr << "Error while reading .obj file\n";
+    }
+    file_.clear();
+    file_.seekg(0, std::ios::beg);
 }
 
 Index OBJParser::ParseId(const std::string& obj_id, Index size) {
@@ -23,84 +101,13 @@ Index OBJParser::ParseId(const std::string& obj_id, Index size) {
     return id - 1;
 }
 
-void OBJParser::ReadVerticies() {
-    for (std::string line; std::getline(file_, line);) {
-        if (line.substr(0, 2) == "v ") {
-            std::stringstream coords;
-            coords.str(line.substr(2));
-            Vector3 res;
-            Index d = 0;
-            for (std::string num; std::getline(coords, num, ' ') && d < 3;) {
-                res[d] = std::atof(num.data());
-                ++d;
-            }
-            verticies_.push_back(res);
-        }
+std::pair<Index, Index> OBJParser::ParseEntry(const std::string& entry) {
+    auto ids = StrSplit(entry, '/');
+    Index normal_id = normals_.size();
+    if (ids.size() == 3) {
+        normal_id = ParseId(ids.back(), normals_.size());
     }
-}
-
-void OBJParser::ReadNormals() {
-    file_.clear();
-    file_.seekg(0, std::ios::beg);
-    for (std::string line; std::getline(file_, line);) {
-        if (line.substr(0, 3) == "vn ") {
-            std::stringstream coords;
-            coords.str(line.substr(3));
-            Vector3 res;
-            Index d = 0;
-            for (std::string num; std::getline(coords, num, ' ') && d < 3;) {
-                res[d] = std::atof(num.data());
-                ++d;
-            }
-            normals_.push_back(res);
-        }
-    }
-}
-
-void OBJParser::ReadFaces() {
-    file_.clear();
-    file_.seekg(0, std::ios::beg);
-    for (std::string line; std::getline(file_, line);) {
-        if (line.substr(0, 2) == "f ") {
-            std::stringstream ids;
-            ids.str(line.substr(2));
-            std::vector<Vector3> face;
-            std::vector<Vector3> normals;
-            for (std::string f; std::getline(ids, f, ' ');) {
-                Index slashes = std::count(f.begin(), f.end(), '/');
-                std::string num;
-                std::stringstream stream{f};
-                std::getline(stream, num, '/');
-                Index id = ParseId(num, verticies_.size());
-                face.push_back(verticies_[id]);
-                if (slashes == 2) {
-                    std::string normal;
-                    if (stream.peek() != '/') {
-                        std::string temp;
-                        std::getline(stream, temp, '/');
-                    } else {
-                        char temp;
-                        stream.read(&temp, 1);
-                    }
-                    std::getline(stream, normal);
-                    Index id = ParseId(normal, normals_.size());
-                    normals.push_back(normals_[id]);
-                }
-            }
-            Vector3 avg_normal{0, 0, 0};
-            for (Index i = 0; i < normals.size(); ++i) {
-                avg_normal += normals[i];
-            }
-            if (!normals.empty()) {
-                avg_normal /= normals.size();
-            }
-            Vector3 normal = Plane3(face[0], face[1], face[2]).GetCoefficients();
-            if (glm::dot(normal, avg_normal) >= 0) {
-                std::reverse(face.begin(), face.end());
-            }
-            data_.push_back(face);
-        }
-    }
+    return std::make_pair(ParseId(ids.front(), verticies_.size()), normal_id);
 }
 
 }  // namespace engine

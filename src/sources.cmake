@@ -1,5 +1,5 @@
 add_library(3d_renderer STATIC
-    alias.cpp
+    color.cpp
     geometry.cpp
     node.cpp
     scene.cpp

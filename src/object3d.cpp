@@ -48,13 +48,13 @@ Object3D Object3D::Cube(Type size) {
 
 Object3D Object3D::Sphere(Type radius, IndexType subdiv) {
     Object3D result;
-    const Type pi = glm::pi<Type>();
-    for (Type phi = 0; phi < 2 * pi; phi += pi / subdiv) {
-        for (Type psi = -pi / 2; psi < pi / 2; psi += pi / subdiv) {
+    constexpr Type kPi = glm::pi<Type>();
+    for (Type phi = 0; phi < 2 * kPi; phi += kPi / subdiv) {
+        for (Type psi = -kPi / 2; psi < kPi / 2; psi += kPi / subdiv) {
             Vector3 p1 = GetSphericalCoordinates(radius, phi, psi);
-            Vector3 p2 = GetSphericalCoordinates(radius, phi, psi + pi / subdiv);
-            Vector3 p3 = GetSphericalCoordinates(radius, phi + pi / subdiv, psi + pi / subdiv);
-            Vector3 p4 = GetSphericalCoordinates(radius, phi + pi / subdiv, psi);
+            Vector3 p2 = GetSphericalCoordinates(radius, phi, psi + kPi / subdiv);
+            Vector3 p3 = GetSphericalCoordinates(radius, phi + kPi / subdiv, psi + kPi / subdiv);
+            Vector3 p4 = GetSphericalCoordinates(radius, phi + kPi / subdiv, psi);
             result.AddFace({p1, p2, p3, p4});
         }
     }
@@ -63,14 +63,14 @@ Object3D Object3D::Sphere(Type radius, IndexType subdiv) {
 
 Object3D Object3D::Torus(Type radius, Type thickness, IndexType subdiv) {
     Object3D result;
-    const Type pi = glm::pi<Type>();
-    for (Type phi = 0; phi < 2 * pi; phi += 2 * pi / subdiv) {
-        for (Type psi = 0; psi < 2 * pi; psi += 2 * pi / subdiv) {
+    constexpr Type kPi = glm::pi<Type>();
+    for (Type phi = 0; phi < 2 * kPi; phi += 2 * kPi / subdiv) {
+        for (Type psi = 0; psi < 2 * kPi; psi += 2 * kPi / subdiv) {
             Vector3 p1 = GetToroidalCoordinates(radius, thickness, phi, psi);
-            Vector3 p2 = GetToroidalCoordinates(radius, thickness, phi, psi + 2 * pi / subdiv);
-            Vector3 p3 = GetToroidalCoordinates(radius, thickness, phi + 2 * pi / subdiv,
-                                                psi + 2 * pi / subdiv);
-            Vector3 p4 = GetToroidalCoordinates(radius, thickness, phi + 2 * pi / subdiv, psi);
+            Vector3 p2 = GetToroidalCoordinates(radius, thickness, phi, psi + 2 * kPi / subdiv);
+            Vector3 p3 = GetToroidalCoordinates(radius, thickness, phi + 2 * kPi / subdiv,
+                                                psi + 2 * kPi / subdiv);
+            Vector3 p4 = GetToroidalCoordinates(radius, thickness, phi + 2 * kPi / subdiv, psi);
             result.AddFace({p1, p2, p3, p4});
         }
     }
@@ -79,12 +79,12 @@ Object3D Object3D::Torus(Type radius, Type thickness, IndexType subdiv) {
 
 Object3D Object3D::Cylinder(Type radius, Type height, IndexType subdiv) {
     Object3D result;
-    const Type pi = glm::pi<Type>();
-    for (Type phi = 0; phi < 2 * pi; phi += 2 * pi / subdiv) {
+    constexpr Type kPi = glm::pi<Type>();
+    for (Type phi = 0; phi < 2 * kPi; phi += 2 * kPi / subdiv) {
         Type x1 = radius * glm::cos(phi);
         Type z1 = radius * glm::sin(phi);
-        Type x2 = radius * glm::cos(phi + 2 * pi / subdiv);
-        Type z2 = radius * glm::sin(phi + 2 * pi / subdiv);
+        Type x2 = radius * glm::cos(phi + 2 * kPi / subdiv);
+        Type z2 = radius * glm::sin(phi + 2 * kPi / subdiv);
         result.AddFace({{x1, 0, z1}, {x2, 0, z2}, {x2, height, z2}, {x1, height, z1}});
         result.AddFace({{x1, 0, z1}, {0, 0, 0}, {x2, 0, z2}});
         result.AddFace({{x1, height, z1}, {x2, height, z2}, {0, height, 0}});
@@ -94,32 +94,34 @@ Object3D Object3D::Cylinder(Type radius, Type height, IndexType subdiv) {
 
 Object3D Object3D::Cone(Type radius, Type height, IndexType subdiv) {
     Object3D result;
-    const Type pi = glm::pi<Type>();
-    for (Type phi = 0; phi < 2 * pi; phi += 2 * pi / subdiv) {
+    constexpr Type kPi = glm::pi<Type>();
+    for (Type phi = 0; phi < 2 * kPi; phi += 2 * kPi / subdiv) {
         Type x1 = radius * glm::cos(phi);
         Type z1 = radius * glm::sin(phi);
-        Type x2 = radius * glm::cos(phi + 2 * pi / subdiv);
-        Type z2 = radius * glm::sin(phi + 2 * pi / subdiv);
+        Type x2 = radius * glm::cos(phi + 2 * kPi / subdiv);
+        Type z2 = radius * glm::sin(phi + 2 * kPi / subdiv);
         result.AddFace({{x1, 0, z1}, {0, height, 0}, {x2, 0, z2}});
         result.AddFace({{x1, 0, z1}, {0, 0, 0}, {x2, 0, z2}});
     }
     return result;
 }
 
-Object3D Object3D::FromFile(const std::string& path) {
+Object3D Object3D::FromFile(const FilePath& path) {
     Object3D result;
     OBJParser parser{path};
     Real max_dist = 0;
-    for (const auto& face : parser.GetFaces()) {
-        for (Vector3 point : face) {
+    std::optional<Polygon> p;
+    while ((p = parser.GetPolygon()) != std::nullopt) {
+        for (Vector3 point : p->GetVerticies()) {
             max_dist = std::max(max_dist, glm::length(point));
         }
     }
-    for (auto face : parser.GetFaces()) {
-        for (Vector3& point : face) {
+    parser.Reset();
+    while ((p = parser.GetPolygon()) != std::nullopt) {
+        for (Vector3& point : p->GetVerticies()) {
             point *= 2 * kDefaultObjectSize / max_dist;
         }
-        result.AddFace(face);
+        result.AddPolygon(*p);
     }
     return result;
 }

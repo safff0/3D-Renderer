@@ -21,23 +21,26 @@ class Node {
     using NodeDataType = std::variant<EmptyNode, Camera, Object3D, LightSource>;
 
 public:
+    static constexpr Vector3 kDefaultPosition = Vector3(0.0);
+
     using IndexType = Index;
 
     Node() = default;
 
     template <typename T>
         requires(!std::is_same_v<std::decay_t<T>, Node>)
-    Node(T&& data) : data_{std::forward<T>(data)} {
+    Node(Node* parent, T&& data, Vector3 position = kDefaultPosition)
+        : parent_{parent}, data_{std::forward<T>(data)} {
+        SetPosition(position);
     }
 
-    // Copies Node with its subtree
     Node(const Node& other);
     Node& operator=(const Node& other);
-    // Other Nodes' pointers break if Node is moved
-    Node(Node&& other) = delete;
-    Node& operator=(Node&& other) = delete;
-    // Swaps Nodes' subtrees
+    Node(Node&& other);
+    Node& operator=(Node&& other);
     void Swap(Node& other);
+
+    std::unique_ptr<Node> CopySubtree() const;
 
     Node* GetParent();
     const Node* GetParent() const;
@@ -48,17 +51,17 @@ public:
 
     void SetParent(Node& node) noexcept;
     void AddChild(Node& node) noexcept;
+    void AddChild(Node&& node) noexcept;
     void Unlink() noexcept;
 
     template <typename T>
-    Node* NewChild(T&& data) noexcept {
-        children_.push_back(std::make_unique<Node>(std::forward<T>(data)));
-        children_.back()->parent_ = this;
+    Node* NewChild(T&& data, Vector3 position = kDefaultPosition) noexcept {
+        children_.push_back(std::make_unique<Node>(this, std::forward<T>(data), position));
         return children_.back().get();
     }
 
-    const Matrix4& GetTransform() const;
-    const Matrix4& GetReverseTransform() const;
+    const Matrix4& GetLocalTransform() const;
+    const Matrix4& GetLocalReverseTransform() const;
     const Matrix4& GetGlobalTransform() const;
     const Matrix4& GetGlobalReverseTransform() const;
 
@@ -86,7 +89,7 @@ public:
     }
 
 private:
-    static constexpr Matrix4 kDefaultTransform = Matrix4(1.0f);
+    static constexpr Matrix4 kDefaultTransform = Matrix4(1.0);
 
     void UpdateSubtreeTransform();
     // Invariants

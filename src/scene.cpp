@@ -4,7 +4,7 @@
 
 namespace engine {
 
-Scene::Scene(const Scene& other) : root_{std::make_unique<details::Node>(*other.root_)} {
+Scene::Scene(const Scene& other) : root_{other.root_->CopySubtree()} {
 }
 
 Scene& Scene::operator=(const Scene& other) {

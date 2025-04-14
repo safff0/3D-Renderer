@@ -1,5 +1,6 @@
 #pragma once
 #include "alias.h"
+#include "color.h"
 
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/glm.hpp>
@@ -14,7 +15,6 @@ class Line2 {
 public:
     using Type = Real;
 
-    Line2() = delete;
     Line2(Vector2 from, Vector2 to);
 
     Type GetX(Type y) const;
@@ -31,7 +31,6 @@ private:
 
 class Line3 {
 public:
-    Line3() = delete;
     explicit Line3(Vector3 from, Vector3 to);
 
     Vector3 GetOrigin() const;
@@ -48,7 +47,6 @@ class Plane3 {
 public:
     using Type = Real;
 
-    Plane3() = delete;
     Plane3(Vector3 p1, Vector3 p2, Vector3 p3);
     Plane3(const Triangle3D& points);
     Plane3(const Polygon& points);
@@ -74,7 +72,6 @@ public:
     using IndexType = Index;
     static constexpr IndexType kVerticiesCount = 3;
 
-    Polygon() = delete;
     Polygon(const Triangle3D& init);
     Polygon(std::initializer_list<Vector3> init);
 
@@ -111,5 +108,7 @@ Vector4 PointApplyTransform(Vector3 to, const Matrix4& transform);
 bool PointInTriangle2D(Vector2 point, const Triangle2D& poly);
 
 Vector3 Intersect(Plane3 plane, Line3 line);
+
+Vector3 Mean(const std::vector<Vector3>& vectors);
 
 }  // namespace engine

@@ -188,4 +188,13 @@ Vector3 Intersect(Plane3 plane, Line3 line) {
     return line.GetOrigin() + t * line.GetDirection();
 }
 
+Vector3 Mean(const std::vector<Vector3>& vectors) {
+    Vector3 result{0, 0, 0};
+    for (const auto& v : vectors) {
+        result += v;
+    }
+    result /= vectors.size();
+    return result;
+}
+
 }  // namespace engine
